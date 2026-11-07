@@ -1,0 +1,29 @@
+[project]
+name = "wifi-portal"
+version = "0.1.0"
+description = "Admin portal for per-person WPA2-Enterprise Wi-Fi logins (FreeRADIUS)"
+authors = [
+    { name = "riomar0001", email = "mariojringuito@riomar.dev" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.14",
+    "cryptography>=44",
+    "fastapi>=0.115",
+    "pycryptodome>=3.21",
+    "sqlalchemy>=2.0",
+    "uvicorn>=0.34",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28",
+    "pytest>=8",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
