@@ -20,7 +20,16 @@ cp -r "$src/." "$dst/"
 chown -R freerad:freerad "$dst"
 chmod -R u=rwX,g=rX,o= "$dst"
 
-# Admin web page; restarted if it ever exits. It signals FreeRADIUS (PID 1 after exec) to reload users.
-(while true; do python3 /portal.py; echo "portal exited, restarting" >&2; sleep 2; done) &
+# The portal rewrites data/users when admins change Wi-Fi users; reload it when it changes.
+# Polling, because file-change events don't cross Docker Desktop's Windows folder mounts.
+(
+    last=$(md5sum "$src/users" | cut -d' ' -f1)
+    while sleep 2; do
+        now=$(md5sum "$src/users" 2>/dev/null | cut -d' ' -f1) || continue
+        if [ -n "$now" ] && [ "$now" != "$last" ]; then
+            /reload-users.sh && last=$now
+        fi
+    done
+) &
 
 exec freeradius -f

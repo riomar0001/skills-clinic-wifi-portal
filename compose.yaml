@@ -1,4 +1,5 @@
 services:
+  # FreeRADIUS: checks Wi-Fi logins for the router.
   radius:
     build: .
     image: wifi-radius
@@ -6,7 +7,26 @@ services:
     restart: unless-stopped
     ports:
       - "1812:1812/udp"
-      # Admin page: this PC only.
-      - "127.0.0.1:8080:8080"
     volumes:
-      - ./data:/mnt/local
+      - ./data:/mnt/local:ro
+
+  # Admin portal (FastAPI + React). Writes data/users; the radius container reloads it.
+  portal:
+    build: ./portal
+    image: wifi-portal
+    container_name: wifi-portal
+    restart: unless-stopped
+    depends_on:
+      - radius
+    ports:
+      # This machine only. To open it to the network, change to "8080:8080".
+      - "127.0.0.1:8080:8080"
+    environment:
+      RADIUS_HOST: radius
+    volumes:
+      - ./data:/mnt/radius
+      # SQLite lives in a Docker volume: file locking on Windows folder mounts isn't reliable.
+      - portal-db:/var/lib/portal
+
+volumes:
+  portal-db:

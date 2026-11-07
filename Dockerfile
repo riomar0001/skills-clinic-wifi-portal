@@ -11,11 +11,7 @@ RUN set -eu; \
     grep -q 'filename = /etc/raddb/local/users' /etc/raddb/mods-available/files; \
     grep -q 'default_eap_type = peap' /etc/raddb/mods-available/eap
 
-# Python for the admin web page (portal.py).
-RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
-
 COPY start.sh /start.sh
-COPY portal.py /portal.py
 COPY reload-users.sh /reload-users.sh
 RUN sed -i 's/\r$//' /start.sh /reload-users.sh && chmod 755 /start.sh /reload-users.sh
 
