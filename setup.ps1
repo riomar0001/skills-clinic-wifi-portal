@@ -1,0 +1,60 @@
+#Requires -Version 7
+# One-time setup: creates certificates, the router secret and an empty user list,
+# then starts the login server. Safe to run again: it never replaces what already exists.
+$ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $true
+
+$image = 'freeradius/freeradius-server:3.2.8'
+$serverName = 'wifi.skillsclinic.local'
+$data = Join-Path $PSScriptRoot 'data'
+$certs = Join-Path $data 'certs'
+$clientsFile = Join-Path $data 'clients.conf'
+$usersFile = Join-Path $data 'users'
+
+docker version --format '{{.Server.Version}}' | Out-Null
+New-Item -ItemType Directory -Force -Path $certs | Out-Null
+
+# Certificates: phones remember this one, so it is created once and kept (valid 10 years).
+if (-not (Test-Path (Join-Path $certs 'server.pem'))) {
+    Write-Host 'Creating certificates...'
+    $script = @"
+set -eu
+cd /etc/raddb/certs
+cp Makefile ca.cnf server.cnf client.cnf inner-server.cnf xpextensions /out/
+cd /out
+sed -i 's/^default_days.*/default_days = 3650/' ca.cnf server.cnf
+sed -i 's/Example Inc\./Skills Clinic/; s/example\.org/skillsclinic.local/' ca.cnf server.cnf
+sed -i 's/"Example Certificate Authority"/"Skills Clinic WiFi CA"/' ca.cnf
+sed -i 's/"Example Server Certificate"/"$serverName"/; s/^DNS\.1 = .*/DNS.1 = $serverName/' server.cnf
+make index.txt serial ca server >/dev/null
+test -s server.pem && test -s ca.pem && test -s ca.der
+"@
+    docker run --rm -v "${certs}:/out" --entrypoint sh $image -c ($script -replace "`r", '')
+}
+
+# Shared secret between the router and this server.
+if (-not (Test-Path $clientsFile)) {
+    $chars = [char[]]'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
+    $secret = -join (1..24 | ForEach-Object { $chars[[Security.Cryptography.RandomNumberGenerator]::GetInt32($chars.Length)] })
+    @"
+# The TP-Link router. Docker Desktop hides the router's real address from the container,
+# so any address is accepted here; Windows Firewall limits who can reach port 1812.
+client router {
+	ipaddr = 0.0.0.0/0
+	proto = udp
+	secret = $secret
+	require_message_authenticator = yes
+}
+"@ | Set-Content -Path $clientsFile -NoNewline
+}
+
+if (-not (Test-Path $usersFile)) {
+    "# Managed by users.ps1 - one line per person.`n" | Set-Content -Path $usersFile -NoNewline
+}
+
+docker compose --project-directory $PSScriptRoot up -d --build
+
+Write-Host ''
+Write-Host 'Login server is running on UDP port 1812.'
+Write-Host "Router 'RADIUS Server Password': the value after 'secret =' in $clientsFile"
+Write-Host 'Add people with:  .\users.ps1 add <name>'

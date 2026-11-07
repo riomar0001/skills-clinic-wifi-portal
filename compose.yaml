@@ -1,0 +1,12 @@
+services:
+  radius:
+    build: .
+    image: wifi-radius
+    container_name: wifi-radius
+    restart: unless-stopped
+    ports:
+      - "1812:1812/udp"
+      # Admin page: this PC only.
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./data:/mnt/local
