@@ -59,6 +59,12 @@ class PasswordIn(_In):
     password: str = Field(max_length=200)
 
 
+class SelfServicePasswordIn(_In):
+    username: str = Field(max_length=64)
+    current_password: str = Field(max_length=200)
+    new_password: str = Field(max_length=200)
+
+
 StatusFilter = Literal["all", "enabled", "disabled"]
 
 

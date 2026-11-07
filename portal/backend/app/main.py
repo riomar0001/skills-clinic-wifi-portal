@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.middleware import GuardMiddleware
-from app.api.routes import admins, auth, system, wifi_users
+from app.api.routes import admins, auth, self_service, system, wifi_users
 from app.core.config import Settings, load_settings
 from app.core.errors import DomainError
 from app.db.migrate import upgrade_to_latest
@@ -49,10 +49,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.session_factory = make_session_factory(engine)
     app.state.throttle = LoginThrottle()
+    app.state.self_service_throttle = LoginThrottle()
     app.state.exporter = RadiusUsersExporter(settings)
     app.state.health = RadiusHealthChecker(settings)
 
-    app.add_middleware(GuardMiddleware, max_body_bytes=settings.max_body_bytes)
+    app.add_middleware(GuardMiddleware, max_body_bytes=settings.max_body_bytes,
+                       self_service_port=settings.self_service_port)
 
     @app.exception_handler(DomainError)
     async def _domain_error(_: Request, exc: DomainError):
@@ -64,7 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         message = f"Please check: {', '.join(fields)}." if fields else "Some fields are invalid."
         return JSONResponse({"detail": message}, status_code=422)
 
-    for module in (auth, wifi_users, admins, system):
+    for module in (auth, wifi_users, admins, system, self_service):
         app.include_router(module.router)
 
     _mount_frontend(app, settings)

@@ -1,8 +1,13 @@
 """Request guards for the API and security headers for every response."""
 
 from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+SELF_SERVICE_PAGE = "/change-password"
+# The only things the network-facing self-service listener will serve.
+SELF_SERVICE_PREFIXES = ("/api/self-service/", "/assets/")
+SELF_SERVICE_PATHS = {SELF_SERVICE_PAGE, "/favicon.svg"}
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_HEADER = "x-requested-with"
@@ -32,11 +37,19 @@ class GuardMiddleware(BaseHTTPMiddleware):
     allow), and Origin, when present, must match the Host.
     """
 
-    def __init__(self, app, max_body_bytes: int):
+    def __init__(self, app, max_body_bytes: int, self_service_port: int = 0):
         super().__init__(app)
         self.max_body_bytes = max_body_bytes
+        self.self_service_port = self_service_port
 
     async def dispatch(self, request: Request, call_next):
+        if self.self_service_port and self._listener_port(request) == self.self_service_port:
+            path = request.url.path
+            if path == "/":
+                return self._with_headers(RedirectResponse(SELF_SERVICE_PAGE, status_code=307))
+            if path not in SELF_SERVICE_PATHS and not path.startswith(SELF_SERVICE_PREFIXES):
+                # Fail closed: everything admin-related is invisible on this port.
+                return self._with_headers(_deny(404, "Not found."))
         if request.url.path.startswith("/api/") and request.method in UNSAFE_METHODS:
             if denied := self._check(request):
                 return self._with_headers(denied)
@@ -62,6 +75,12 @@ class GuardMiddleware(BaseHTTPMiddleware):
         if not length.isdigit() or int(length) > self.max_body_bytes:
             return _deny(413, "Request too large.")
         return None
+
+    @staticmethod
+    def _listener_port(request: Request) -> int | None:
+        """The port of the socket this request arrived on (inside the container), not the Host header."""
+        server = request.scope.get("server")
+        return server[1] if server and len(server) > 1 else None
 
     @staticmethod
     def _with_headers(response):

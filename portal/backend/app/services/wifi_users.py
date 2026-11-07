@@ -1,14 +1,28 @@
 from __future__ import annotations
 
+import hmac
+from typing import Protocol
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.errors import Conflict, NotFound
-from app.core.passwords import FULL_NAME_MAX, NOTE_MAX, check_username, clean_text, nt_hash
+from app.core.errors import Conflict, InvalidInput, NotAuthenticated, NotFound, TooManyAttempts
+from app.core.passwords import (FULL_NAME_MAX, NOTE_MAX, check_username, check_wifi_password, clean_text,
+                                nt_hash)
 from app.db.models import WifiUser, now
 from app.repositories.activity import ActivityRepository
 from app.repositories.wifi_users import StatusFilter, WifiUserRepository
 from app.services.radius_export import RadiusUsersExporter
+
+
+class PasswordGuessThrottle(Protocol):
+    def seconds_locked(self, username: str) -> int: ...
+    def failed(self, username: str) -> None: ...
+    def succeeded(self, username: str) -> None: ...
+
+
+# Compared against when the username doesn't exist, so both cases take the same path.
+_DUMMY_NT_HASH = "0" * 32
 
 
 class WifiUserService:
@@ -64,6 +78,31 @@ class WifiUserService:
         user.nt_hash = nt_hash(password)
         user.updated_at = now()
         self.activity.add(actor, "wifi.password", username)
+        self._commit("Could not save.", radius_changed=True)
+
+    def change_own_password(self, username: str, current_password: str, new_password: str,
+                            throttle: PasswordGuessThrottle) -> None:
+        """Self-service: a Wi-Fi user proves who they are with their current password."""
+        username = (username or "").strip().lower()
+        if (wait := throttle.seconds_locked(username)) > 0:
+            raise TooManyAttempts(f"Too many wrong passwords. Try again in {wait // 60 + 1} minute(s).")
+        user = self.users.get(username)
+        try:
+            given = nt_hash(current_password)
+        except InvalidInput:
+            given = ""  # can't be a valid current password; still counts as a wrong guess
+        stored = user.nt_hash if user and user.enabled else _DUMMY_NT_HASH
+        if not given or not hmac.compare_digest(given, stored) or user is None or not user.enabled:
+            throttle.failed(username)
+            raise NotAuthenticated("Wrong username or password.")
+        throttle.succeeded(username)
+
+        check_wifi_password(new_password)
+        if new_password == current_password:
+            raise InvalidInput("The new password must be different from the current one.")
+        user.nt_hash = nt_hash(new_password)
+        user.updated_at = now()
+        self.activity.add(username, "wifi.self_password", username)
         self._commit("Could not save.", radius_changed=True)
 
     def delete(self, actor: str, username: str) -> None:

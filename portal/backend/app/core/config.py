@@ -35,6 +35,9 @@ class Settings:
     static_dir: Path | None     # built React app; None in tests
     radius_host: str
     radius_port: int
+    admin_port: int = 8080
+    # Second listener that serves only the Wi-Fi user "change my password" page; 0 turns it off.
+    self_service_port: int = 0
     session_idle_seconds: int = 8 * 3600
     cookie_secure: bool = False  # True only when served over HTTPS
     max_body_bytes: int = 16 * 1024
@@ -64,6 +67,8 @@ def load_settings() -> Settings:
         static_dir=Path(static) if static else None,
         radius_host=os.environ.get("RADIUS_HOST", "radius"),
         radius_port=_env_int("RADIUS_PORT", 1812, 1, 65535),
+        admin_port=_env_int("PORTAL_ADMIN_PORT", 8080, 1, 65535),
+        self_service_port=_env_int("PORTAL_SELF_SERVICE_PORT", 0, 0, 65535),
         session_idle_seconds=_env_int("PORTAL_SESSION_IDLE_SECONDS", 8 * 3600, 300, 7 * 24 * 3600),
         cookie_secure=_env_bool("PORTAL_COOKIE_SECURE", False),
     )
