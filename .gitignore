@@ -1,0 +1,13 @@
+# Router secret, password hashes and certificate private keys
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.db
+
+# Node
+node_modules/
+dist/
