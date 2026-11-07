@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, CircleCheck, CircleX, Plus, ShieldCheck, UserCheck, UserX, Users, type LucideIcon } from 'lucide-react'
+import { ArrowRight, CalendarX, CircleCheck, CircleX, Plus, UserCheck, UserX, Users, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { api, errorMessage } from '@/api/client'
@@ -59,9 +59,9 @@ export function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Wi-Fi users" value={d.wifi_total} icon={Users} to="/wifi-users" />
-        <StatCard label="Active" value={d.wifi_enabled} icon={UserCheck} to="/wifi-users?status=enabled" />
+        <StatCard label="Active" value={d.wifi_active} icon={UserCheck} to="/wifi-users?status=active" />
+        <StatCard label="Expired" value={d.wifi_expired} icon={CalendarX} to="/wifi-users?status=expired" />
         <StatCard label="Disabled" value={d.wifi_disabled} icon={UserX} to="/wifi-users?status=disabled" />
-        <StatCard label="Admins" value={d.admins} icon={ShieldCheck} to="/admins" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">

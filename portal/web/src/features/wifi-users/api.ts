@@ -42,6 +42,7 @@ export interface NewWifiUser {
   password: string
   full_name: string
   note: string
+  expires_at: number | null
 }
 
 export function useCreateWifiUser() {
@@ -55,7 +56,8 @@ export function useCreateWifiUser() {
 export function useUpdateWifiUser(username: string) {
   const invalidate = useInvalidateAfterChange()
   return useMutation({
-    mutationFn: (body: Partial<Pick<WifiUser, 'full_name' | 'note' | 'enabled'>>) =>
+    // expires_at: null removes the expiry; leaving it out keeps it.
+    mutationFn: (body: Partial<Pick<WifiUser, 'full_name' | 'note' | 'enabled' | 'expires_at'>>) =>
       api.patch<WifiUser>(path(username), body),
     onSuccess: invalidate,
   })

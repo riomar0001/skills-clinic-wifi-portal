@@ -10,11 +10,14 @@ export interface WifiUser {
   full_name: string
   note: string
   enabled: boolean
+  /** Unix seconds; null = never expires. */
+  expires_at: number | null
+  expired: boolean
   created_at: number
   updated_at: number
 }
 
-export type WifiStatusFilter = 'all' | 'enabled' | 'disabled'
+export type WifiStatusFilter = 'all' | 'active' | 'expired' | 'disabled'
 
 export interface Admin {
   username: string
@@ -38,8 +41,9 @@ export interface Certificate {
 
 export interface Dashboard {
   wifi_total: number
-  wifi_enabled: number
+  wifi_active: number
   wifi_disabled: number
+  wifi_expired: number
   admins: number
   radius: { ok: boolean; detail: string }
   certificate: Certificate | null

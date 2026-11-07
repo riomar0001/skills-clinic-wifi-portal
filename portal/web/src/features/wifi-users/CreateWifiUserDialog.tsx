@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { USERNAME_HINT, USERNAME_PATTERN, generatePassword } from '@/lib/password'
 import { useCreateWifiUser } from './api'
 import type { Credentials } from './CredentialsDialog'
+import { ExpiryPicker } from './ExpiryPicker'
 import { WifiPasswordInput } from './PasswordInput'
 
 interface Props {
@@ -24,12 +25,16 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
   const [fullName, setFullName] = useState('')
   const [note, setNote] = useState('')
   const [password, setPassword] = useState(generatePassword)
+  const [expiresAt, setExpiresAt] = useState<number | null>(null)
+  const [pickerKey, setPickerKey] = useState(0)
 
   const close = () => {
     setUsername('')
     setFullName('')
     setNote('')
     setPassword(generatePassword())
+    setExpiresAt(null)
+    setPickerKey((k) => k + 1) // resets the picker's selected preset
     create.reset()
     onClose()
   }
@@ -38,7 +43,7 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
     e.preventDefault()
     const name = username.trim()
     create.mutate(
-      { username: name, password, full_name: fullName, note },
+      { username: name, password, full_name: fullName, note, expires_at: expiresAt },
       {
         onSuccess: () => {
           close()
@@ -74,6 +79,9 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
             </div>
             <FormField label="Password" hint="8-64 characters. Generated passwords are easy to type on a phone.">
               <WifiPasswordInput value={password} onChange={setPassword} />
+            </FormField>
+            <FormField label="Access expires" hint="After this the Wi-Fi refuses the login. Good for guests.">
+              <ExpiryPicker key={pickerKey} value={expiresAt} onChange={setExpiresAt} />
             </FormField>
             <FormField label="Note" hint="Optional, e.g. role or device">
               <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} />

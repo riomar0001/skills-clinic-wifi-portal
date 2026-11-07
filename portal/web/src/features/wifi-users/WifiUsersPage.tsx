@@ -20,7 +20,9 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatDateTime, timeAgo } from '@/lib/format'
+import { describeExpiry, userStatus } from '@/lib/expiry'
+import { formatDateTime } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { useDeleteWifiUser, useSetWifiEnabled, useWifiUsers } from './api'
 import { CreateWifiUserDialog } from './CreateWifiUserDialog'
 import { CredentialsDialog, type Credentials } from './CredentialsDialog'
@@ -28,7 +30,8 @@ import { UserAvatar } from './UserAvatar'
 
 const FILTERS: { value: WifiStatusFilter; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'enabled', label: 'Active' },
+  { value: 'active', label: 'Active' },
+  { value: 'expired', label: 'Expired' },
   { value: 'disabled', label: 'Disabled' },
 ]
 
@@ -43,8 +46,7 @@ function useDebounced<T>(value: T, ms: number): T {
 
 export function WifiUsersPage() {
   const [params, setParams] = useSearchParams()
-  const statusParam = params.get('status')
-  const status: WifiStatusFilter = statusParam === 'enabled' || statusParam === 'disabled' ? statusParam : 'all'
+  const status: WifiStatusFilter = FILTERS.find((f) => f.value === params.get('status'))?.value ?? 'all'
   const [search, setSearch] = useState(params.get('q') ?? '')
   const debouncedSearch = useDebounced(search.trim(), 250)
   const users = useWifiUsers(debouncedSearch, status)
@@ -122,8 +124,8 @@ export function WifiUsersPage() {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="pl-4">User</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="hidden md:table-cell">Note</TableHead>
-                <TableHead className="hidden sm:table-cell">Updated</TableHead>
+                <TableHead className="hidden sm:table-cell">Expires</TableHead>
+                <TableHead className="hidden lg:table-cell">Note</TableHead>
                 <TableHead className="w-12 pr-4"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
@@ -142,9 +144,12 @@ export function WifiUsersPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell><StatusBadge enabled={u.enabled} /></TableCell>
-                  <TableCell className="hidden max-w-64 truncate text-muted-foreground md:table-cell">{u.note || '—'}</TableCell>
-                  <TableCell className="hidden text-muted-foreground sm:table-cell" title={formatDateTime(u.updated_at)}>{timeAgo(u.updated_at)}</TableCell>
+                  <TableCell><StatusBadge status={userStatus(u)} /></TableCell>
+                  <TableCell className={cn('hidden sm:table-cell', u.expired ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')}
+                    title={u.expires_at === null ? undefined : formatDateTime(u.expires_at)}>
+                    {describeExpiry(u.expires_at)}
+                  </TableCell>
+                  <TableCell className="hidden max-w-64 truncate text-muted-foreground lg:table-cell">{u.note || '—'}</TableCell>
                   <TableCell className="pr-4" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

@@ -1,4 +1,4 @@
-import { ArrowLeft, CircleAlert, KeyRound, Trash2, UserX } from 'lucide-react'
+import { ArrowLeft, CalendarClock, CircleAlert, KeyRound, Trash2, UserX } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
@@ -16,10 +16,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { describeExpiry, userStatus } from '@/lib/expiry'
 import { formatDateTime } from '@/lib/format'
 import { generatePassword } from '@/lib/password'
+import { cn } from '@/lib/utils'
 import { useDeleteWifiUser, useSetWifiPassword, useUpdateWifiUser, useWifiUser } from './api'
 import { CredentialsDialog, type Credentials } from './CredentialsDialog'
+import { ExpiryPicker } from './ExpiryPicker'
 import { WifiPasswordInput } from './PasswordInput'
 import { UserAvatar } from './UserAvatar'
 
@@ -41,6 +44,51 @@ export function WifiUserDetailPage() {
   }
   // Keyed by username so the form starts from the saved values.
   return <WifiUserDetail key={user.data.username} user={user.data} />
+}
+
+function ExpiryEditor({ user }: { user: WifiUser }) {
+  const update = useUpdateWifiUser(user.username)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<number | null>(user.expires_at)
+
+  const save = (value: number | null) =>
+    update.mutate({ expires_at: value }, {
+      onSuccess: () => {
+        setEditing(false)
+        toast.success(value === null ? 'Expiry removed' : `Access now ends ${formatDateTime(value)}`)
+      },
+      onError: (err) => toast.error(errorMessage(err)),
+    })
+
+  if (!editing) {
+    return (
+      <div className="mt-3 flex items-center justify-between gap-4 rounded-lg border p-3">
+        <div className="grid gap-1">
+          <span className="flex items-center gap-1.5 font-medium"><CalendarClock className="size-4 text-muted-foreground" /> Expires</span>
+          <span className={cn('text-xs', user.expired ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')}>
+            {user.expires_at === null
+              ? 'Never'
+              : `${user.expired ? 'Expired' : 'Ends'} ${formatDateTime(user.expires_at)} (${describeExpiry(user.expires_at)})`}
+          </span>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => { setDraft(user.expires_at); setEditing(true) }}>
+          {user.expires_at === null ? 'Set' : 'Change'}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-3 grid gap-3 rounded-lg border p-3">
+      <FormField label="Access expires" hint="The Wi-Fi refuses the login after this moment.">
+        <ExpiryPicker value={draft} onChange={setDraft} />
+      </FormField>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={update.isPending}>Cancel</Button>
+        <Button size="sm" onClick={() => save(draft)} disabled={update.isPending || draft === user.expires_at}>Save</Button>
+      </div>
+    </div>
+  )
 }
 
 function WifiUserDetail({ user }: { user: WifiUser }) {
@@ -107,7 +155,7 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="truncate font-mono text-2xl font-semibold tracking-tight">{user.username}</h1>
-              <StatusBadge enabled={user.enabled} />
+              <StatusBadge status={userStatus(user)} />
             </div>
             <p className="text-sm text-muted-foreground">
               {user.full_name || 'No name'} · added {formatDateTime(user.created_at)}
@@ -146,13 +194,13 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
           <Card>
             <CardHeader>
               <CardTitle>Wi-Fi access</CardTitle>
-              <CardDescription>Block new connections without deleting the account.</CardDescription>
+              <CardDescription>Block or time-limit the account without deleting it.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
                 <Label htmlFor="access-switch" className="grid gap-1 font-normal">
-                  <span className="font-medium">{user.enabled ? 'Can join the Wi-Fi' : 'Blocked'}</span>
-                  <span className="text-xs text-muted-foreground">Last changed {formatDateTime(user.updated_at)}</span>
+                  <span className="font-medium">{user.enabled ? 'Enabled' : 'Disabled'}</span>
+                  <span className="text-xs text-muted-foreground">Turn off to block the account right away.</span>
                 </Label>
                 <Switch
                   id="access-switch"
@@ -161,6 +209,7 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
                   onCheckedChange={(checked) => (checked ? setEnabled(true) : setConfirmDisable(true))}
                 />
               </div>
+              <ExpiryEditor user={user} />
             </CardContent>
           </Card>
 
