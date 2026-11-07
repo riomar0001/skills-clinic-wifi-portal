@@ -1,8 +1,9 @@
 """Request and response bodies. Length caps here only bound input size; services give the friendly errors."""
 
-from typing import Literal
+import time
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class _In(BaseModel):
@@ -38,8 +39,18 @@ class WifiUserOut(_Out):
     full_name: str
     note: str
     enabled: bool
+    expires_at: int | None
     created_at: int
     updated_at: int
+
+    @computed_field
+    @property
+    def expired(self) -> bool:
+        return self.expires_at is not None and self.expires_at <= int(time.time())
+
+
+# Unix seconds; strict so "123" or 1.5 aren't silently accepted.
+Expiry = Annotated[int, Field(strict=True, ge=0, le=2**40)]
 
 
 class WifiUserCreateIn(_In):
@@ -47,12 +58,14 @@ class WifiUserCreateIn(_In):
     password: str = Field(max_length=200)
     full_name: str = Field(default="", max_length=200)
     note: str = Field(default="", max_length=600)
+    expires_at: Expiry | None = None
 
 
 class WifiUserUpdateIn(_In):
     full_name: str | None = Field(default=None, max_length=200)
     note: str | None = Field(default=None, max_length=600)
     enabled: bool | None = None
+    expires_at: Expiry | None = None  # send null to remove the expiry; leave out to keep it
 
 
 class PasswordIn(_In):
@@ -65,7 +78,7 @@ class SelfServicePasswordIn(_In):
     new_password: str = Field(max_length=200)
 
 
-StatusFilter = Literal["all", "enabled", "disabled"]
+StatusFilter = Literal["all", "active", "disabled", "expired"]
 
 
 # ----- admins -----
@@ -109,8 +122,9 @@ class CertificateOut(BaseModel):
 
 class DashboardOut(BaseModel):
     wifi_total: int
-    wifi_enabled: int
+    wifi_active: int
     wifi_disabled: int
+    wifi_expired: int
     admins: int
     radius: RadiusStatusOut
     certificate: CertificateOut | None

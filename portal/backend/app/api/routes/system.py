@@ -22,14 +22,15 @@ router = APIRouter(prefix="/api", tags=["system"])
 
 @router.get("/dashboard", response_model=DashboardOut)
 def dashboard(request: Request, _: CurrentAdminDep, db: DbDep, settings: SettingsDep) -> DashboardOut:
-    total, enabled = WifiUserRepository(db).counts()
+    counts = WifiUserRepository(db).counts()
     health = request.app.state.health.check()
     try:
         cert = CertificateOut(**vars(CertificateService(settings).info()))
     except NotFound:
         cert = None
     return DashboardOut(
-        wifi_total=total, wifi_enabled=enabled, wifi_disabled=total - enabled,
+        wifi_total=counts["total"], wifi_active=counts["active"],
+        wifi_disabled=counts["disabled"], wifi_expired=counts["expired"],
         admins=AdminRepository(db).count(),
         radius=RadiusStatusOut(ok=health.ok, detail=health.detail),
         certificate=cert,

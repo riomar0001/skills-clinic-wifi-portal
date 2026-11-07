@@ -23,6 +23,27 @@ class PasswordGuessThrottle(Protocol):
 
 # Compared against when the username doesn't exist, so both cases take the same path.
 _DUMMY_NT_HASH = "0" * 32
+MAX_EXPIRY_SECONDS = 10 * 365 * 86400
+
+
+class _Unset:
+    """Marks 'field not sent' in updates, so None can mean 'clear the expiry'."""
+
+
+UNSET = _Unset()
+
+
+def check_expiry(expires_at: int | None) -> int | None:
+    if expires_at is None:
+        return None
+    if isinstance(expires_at, bool) or not isinstance(expires_at, int):
+        raise InvalidInput("Expiry must be a date and time.")
+    current = now()
+    if expires_at <= current:
+        raise InvalidInput("The expiry must be in the future.")
+    if expires_at > current + MAX_EXPIRY_SECONDS:
+        raise InvalidInput("The expiry can be at most 10 years away.")
+    return expires_at
 
 
 class WifiUserService:
@@ -41,7 +62,8 @@ class WifiUserService:
             raise NotFound(f"No Wi-Fi user named '{username}'.")
         return user
 
-    def create(self, actor: str, username: str, password: str, full_name: str = "", note: str = "") -> WifiUser:
+    def create(self, actor: str, username: str, password: str, full_name: str = "", note: str = "",
+               expires_at: int | None = None) -> WifiUser:
         check_username(username)
         user = WifiUser(
             username=username,
@@ -49,6 +71,7 @@ class WifiUserService:
             note=clean_text(note, "Note", NOTE_MAX),
             nt_hash=nt_hash(password),
             enabled=True,
+            expires_at=check_expiry(expires_at),
         )
         if self.users.get(username) is not None:
             raise Conflict(f"'{username}' already exists.")
@@ -57,8 +80,8 @@ class WifiUserService:
         self._commit(f"'{username}' already exists.", radius_changed=True)
         return user
 
-    def update(self, actor: str, username: str, *, full_name: str | None = None,
-               note: str | None = None, enabled: bool | None = None) -> WifiUser:
+    def update(self, actor: str, username: str, *, full_name: str | None = None, note: str | None = None,
+               enabled: bool | None = None, expires_at: int | None | _Unset = UNSET) -> WifiUser:
         user = self.get(username)
         if full_name is not None:
             user.full_name = clean_text(full_name, "Full name", FULL_NAME_MAX)
@@ -67,10 +90,19 @@ class WifiUserService:
         toggled = enabled is not None and enabled != user.enabled
         if toggled:
             user.enabled = enabled
+        expiry_changed = not isinstance(expires_at, _Unset) and expires_at != user.expires_at
+        if expiry_changed:
+            user.expires_at = check_expiry(expires_at)  # type: ignore[arg-type]
         user.updated_at = now()
-        action = ("wifi.enable" if enabled else "wifi.disable") if toggled else "wifi.update"
+
+        if toggled:
+            action = "wifi.enable" if enabled else "wifi.disable"
+        elif expiry_changed:
+            action = "wifi.expiry_clear" if user.expires_at is None else "wifi.expiry"
+        else:
+            action = "wifi.update"
         self.activity.add(actor, action, username)
-        self._commit("Could not save.", radius_changed=toggled)
+        self._commit("Could not save.", radius_changed=toggled or expiry_changed)
         return user
 
     def set_password(self, actor: str, username: str, password: str) -> None:
@@ -91,8 +123,9 @@ class WifiUserService:
             given = nt_hash(current_password)
         except InvalidInput:
             given = ""  # can't be a valid current password; still counts as a wrong guess
-        stored = user.nt_hash if user and user.enabled else _DUMMY_NT_HASH
-        if not given or not hmac.compare_digest(given, stored) or user is None or not user.enabled:
+        usable = user is not None and user.enabled and not user.is_expired()
+        stored = user.nt_hash if usable else _DUMMY_NT_HASH
+        if not given or not hmac.compare_digest(given, stored) or not usable:
             throttle.failed(username)
             raise NotAuthenticated("Wrong username or password.")
         throttle.succeeded(username)

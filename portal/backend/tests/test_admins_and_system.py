@@ -80,7 +80,7 @@ def test_radius_health_reports_down(settings: Settings):
 def test_dashboard(admin_client):
     admin_client.post("/api/wifi-users", json={"username": "ana", "password": "Sunflower-42"})
     d = admin_client.get("/api/dashboard").json()
-    assert (d["wifi_total"], d["wifi_enabled"], d["admins"]) == (1, 1, 1)
+    assert (d["wifi_total"], d["wifi_active"], d["wifi_expired"], d["admins"]) == (1, 1, 0, 1)
     assert d["certificate"]["name"] == "wifi.test.local"
     assert d["recent_activity"][0]["action"] == "wifi.create"
     assert "ok" in d["radius"]

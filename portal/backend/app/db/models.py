@@ -41,8 +41,13 @@ class WifiUser(Base):
     note: Mapped[str] = mapped_column(String(300), default="")
     nt_hash: Mapped[str] = mapped_column(String(32))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    # After this moment FreeRADIUS refuses the login (Expiration attribute); None = never expires.
+    expires_at: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     created_at: Mapped[int] = mapped_column(Integer, default=now)
     updated_at: Mapped[int] = mapped_column(Integer, default=now)
+
+    def is_expired(self, at: int | None = None) -> bool:
+        return self.expires_at is not None and self.expires_at <= (now() if at is None else at)
 
 
 class ActivityEntry(Base):
