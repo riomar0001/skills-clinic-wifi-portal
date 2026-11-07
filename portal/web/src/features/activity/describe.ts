@@ -8,6 +8,7 @@ const DESCRIPTIONS: Record<string, (target: string) => string> = {
   'wifi.password': (t) => `reset the password of ${t}`,
   'wifi.delete': (t) => `deleted Wi-Fi user ${t}`,
   'wifi.import': (t) => `imported ${t} from the old user list`,
+  'wifi.self_password': () => 'changed their own Wi-Fi password',
   'admin.setup': () => 'set up the portal',
   'admin.login': () => 'signed in',
   'admin.create': (t) => `added admin ${t}`,

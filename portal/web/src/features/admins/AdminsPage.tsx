@@ -1,15 +1,23 @@
-import { Plus, ShieldCheck, Trash2 } from 'lucide-react'
+import { CircleAlert, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { errorMessage } from '../../api/client'
-import type { Admin } from '../../api/types'
-import { Button } from '../../components/ui/Button'
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
-import { InputField } from '../../components/ui/Field'
-import { Modal } from '../../components/ui/Modal'
-import { Badge, Card, ErrorNotice, PageHeader, Spinner } from '../../components/ui/misc'
-import { useToast } from '../../components/ui/toast-context'
-import { formatDate } from '../../lib/format'
-import { USERNAME_HINT, USERNAME_PATTERN } from '../../lib/password'
+import { toast } from 'sonner'
+import { errorMessage } from '@/api/client'
+import type { Admin } from '@/api/types'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { FormField } from '@/components/common/FormField'
+import { PageHeader } from '@/components/common/PageHeader'
+import { ErrorAlert, ListSkeleton } from '@/components/common/states'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { formatDate } from '@/lib/format'
+import { USERNAME_HINT, USERNAME_PATTERN } from '@/lib/password'
 import { useCurrentAdmin } from '../auth/useCurrentAdmin'
 import { useAdmins, useCreateAdmin, useDeleteAdmin } from './api'
 
@@ -17,82 +25,86 @@ export function AdminsPage() {
   const me = useCurrentAdmin()
   const admins = useAdmins()
   const remove = useDeleteAdmin()
-  const toast = useToast()
   const [adding, setAdding] = useState(false)
   const [toDelete, setToDelete] = useState<Admin | null>(null)
-
-  const onlyOne = (admins.data?.length ?? 0) <= 1
 
   return (
     <>
       <PageHeader
         title="Admins"
-        description="People who can sign in to this portal and manage Wi-Fi users."
-        actions={<Button variant="primary" icon={<Plus size={16} />} onClick={() => setAdding(true)}>Add admin</Button>}
+        description="People who can sign in here and manage Wi-Fi users."
+        actions={<Button onClick={() => setAdding(true)}><Plus /> Add admin</Button>}
       />
-      <Card>
+      <Card className="gap-0 overflow-hidden py-0">
         {admins.isPending ? (
-          <Spinner />
+          <ListSkeleton rows={2} />
         ) : admins.isError ? (
-          <ErrorNotice message={errorMessage(admins.error)} onRetry={() => admins.refetch()} />
+          <div className="p-4"><ErrorAlert message={errorMessage(admins.error)} onRetry={() => admins.refetch()} /></div>
         ) : (
-          <ul className="list">
-            {admins.data.map((a) => (
-              <li key={a.username} className="list-row list-row-static">
-                <span className="avatar avatar-admin" aria-hidden><ShieldCheck size={16} /></span>
-                <span className="list-main">
-                  <span className="list-title">
-                    {a.username} {a.username === me && <Badge tone="info">You</Badge>}
-                  </span>
-                  <span className="list-sub">Added {formatDate(a.created_at)}</span>
-                </span>
-                {a.username !== me && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<Trash2 size={15} />}
-                    onClick={() => setToDelete(a)}
-                    disabled={onlyOne}
-                    aria-label={`Remove ${a.username}`}
-                  >
-                    <span className="hide-sm">Remove</span>
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-4">Admin</TableHead>
+                <TableHead className="hidden sm:table-cell">Added</TableHead>
+                <TableHead className="w-12 pr-4"><span className="sr-only">Actions</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {admins.data.map((a) => (
+                <TableRow key={a.username}>
+                  <TableCell className="pl-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="size-9"><AvatarFallback className="text-muted-foreground"><ShieldCheck className="size-4" /></AvatarFallback></Avatar>
+                      <span className="font-medium">{a.username}</span>
+                      {a.username === me && <Badge variant="secondary">You</Badge>}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden text-muted-foreground sm:table-cell">{formatDate(a.created_at)}</TableCell>
+                  <TableCell className="pr-4">
+                    {a.username !== me && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon-sm" aria-label={`Remove ${a.username}`} onClick={() => setToDelete(a)}>
+                            <Trash2 />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Remove admin</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </Card>
 
       <AddAdminDialog open={adding} onClose={() => setAdding(false)} />
-
       <ConfirmDialog
         open={toDelete !== null}
+        onOpenChange={(open) => !open && setToDelete(null)}
         title={`Remove admin ${toDelete?.username ?? ''}?`}
+        description="They’ll be signed out and can’t manage the portal anymore. Wi-Fi users aren’t affected."
         confirmLabel="Remove admin"
-        danger
+        destructive
         busy={remove.isPending}
-        onClose={() => setToDelete(null)}
         onConfirm={() =>
           toDelete &&
           remove.mutate(toDelete.username, {
             onSuccess: () => {
-              toast.success(`${toDelete.username} can no longer sign in.`)
+              toast.success(`${toDelete.username} can no longer sign in`)
               setToDelete(null)
             },
             onError: (err) => toast.error(errorMessage(err)),
           })
         }
-      >
-        They’ll be signed out and can’t manage the portal anymore. Wi-Fi users aren’t affected.
-      </ConfirmDialog>
+      />
     </>
   )
 }
 
 function AddAdminDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const create = useCreateAdmin()
-  const toast = useToast()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -116,64 +128,43 @@ function AddAdminDialog({ open, onClose }: { open: boolean; onClose: () => void 
     const name = username.trim()
     create.mutate({ username: name, password }, {
       onSuccess: () => {
-        toast.success(`${name} can now sign in.`)
+        toast.success(`${name} can now sign in`)
         close()
       },
     })
   }
 
   return (
-    <Modal
-      open={open}
-      title="Add admin"
-      description="Admins can add, change and remove Wi-Fi users and other admins."
-      onClose={close}
-      footer={
-        <>
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button type="submit" form="add-admin" variant="primary" loading={create.isPending}>Add admin</Button>
-        </>
-      }
-    >
-      <form id="add-admin" className="stack" onSubmit={submit}>
-        {create.isError && <ErrorNotice message={errorMessage(create.error)} />}
-        <InputField
-          label="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value.toLowerCase())}
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          pattern={USERNAME_PATTERN}
-          title={USERNAME_HINT}
-          hint={USERNAME_HINT}
-          required
-          autoFocus
-        />
-        <InputField
-          label="Password"
-          type="password"
-          autoComplete="new-password"
-          minLength={10}
-          maxLength={128}
-          hint="At least 10 characters. Share it with them privately."
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <InputField
-          label="Repeat password"
-          type="password"
-          autoComplete="new-password"
-          required
-          error={mismatch ? 'The passwords don’t match.' : undefined}
-          value={confirm}
-          onChange={(e) => {
-            setConfirm(e.target.value)
-            setMismatch(false)
-          }}
-        />
-      </form>
-    </Modal>
+    <Dialog open={open} onOpenChange={(next) => !next && !create.isPending && close()}>
+      <DialogContent className="sm:max-w-md">
+        <form onSubmit={submit} className="grid gap-6">
+          <DialogHeader>
+            <DialogTitle>Add admin</DialogTitle>
+            <DialogDescription>Admins can add, change and remove Wi-Fi users and other admins.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-5">
+            {create.isError && (
+              <Alert variant="destructive"><CircleAlert /><AlertDescription>{errorMessage(create.error)}</AlertDescription></Alert>
+            )}
+            <FormField label="Username" hint={USERNAME_HINT}>
+              <Input value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} autoComplete="off"
+                autoCapitalize="none" spellCheck={false} pattern={USERNAME_PATTERN} required autoFocus />
+            </FormField>
+            <FormField label="Password" hint="At least 10 characters. Share it with them privately.">
+              <Input type="password" autoComplete="new-password" minLength={10} maxLength={128} required
+                value={password} onChange={(e) => setPassword(e.target.value)} />
+            </FormField>
+            <FormField label="Repeat password" error={mismatch ? 'The passwords don’t match.' : undefined}>
+              <Input type="password" autoComplete="new-password" required value={confirm}
+                onChange={(e) => { setConfirm(e.target.value); setMismatch(false) }} />
+            </FormField>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={close} disabled={create.isPending}>Cancel</Button>
+            <Button type="submit" disabled={create.isPending}>{create.isPending ? 'Adding…' : 'Add admin'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

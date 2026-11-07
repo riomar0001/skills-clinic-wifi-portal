@@ -1,76 +1,60 @@
-import { Activity, KeyRound, LayoutDashboard, LogOut, Menu, Server, ShieldCheck, Users, X } from 'lucide-react'
-import { useState } from 'react'
-import { NavLink, Outlet, useNavigate, useOutletContext } from 'react-router'
-import { useLogout } from '../../features/auth/api'
-import { Logo } from './Logo'
+import { Fragment } from 'react'
+import { Link, Outlet, useLocation, useOutletContext } from 'react-router'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
+import { Separator } from '@/components/ui/separator'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { AppSidebar } from './AppSidebar'
+import { SECTION_LABELS } from './nav'
 
-const NAV = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/wifi-users', label: 'Wi-Fi users', icon: Users, end: false },
-  { to: '/admins', label: 'Admins', icon: ShieldCheck, end: false },
-  { to: '/activity', label: 'Activity', icon: Activity, end: false },
-  { to: '/server', label: 'Server', icon: Server, end: false },
-]
+function useCrumbs(): { label: string; to?: string }[] {
+  const segments = useLocation().pathname.split('/').filter(Boolean).map(decodeURIComponent)
+  const section = segments[0] ?? ''
+  const crumbs: { label: string; to?: string }[] = [{ label: SECTION_LABELS[section] ?? 'Not found', to: `/${section}` }]
+  if (segments[1]) crumbs.push({ label: segments[1] })
+  return crumbs
+}
 
 export function AppShell() {
   const admin = useOutletContext<string>()
-  const logout = useLogout()
-  const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const closeMenu = () => setMenuOpen(false)
-
-  const signOut = () => logout.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })
+  const crumbs = useCrumbs()
 
   return (
-    <div className={`shell${menuOpen ? ' menu-open' : ''}`}>
-      <header className="topbar">
-        <div className="brand">
-          <Logo />
-          <span>Wi-Fi Portal</span>
-        </div>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={menuOpen}
-          aria-controls="sidebar"
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          {menuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </header>
-
-      <aside id="sidebar" className="sidebar">
-        <div className="brand sidebar-brand">
-          <Logo />
-          <span>Wi-Fi Portal</span>
-        </div>
-        <nav className="nav" aria-label="Main">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className="nav-link" onClick={closeMenu}>
-              <Icon size={18} aria-hidden />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <NavLink to="/account" className="nav-link" onClick={closeMenu}>
-            <KeyRound size={18} aria-hidden />
-            <span className="truncate">{admin}</span>
-          </NavLink>
-          <button type="button" className="nav-link nav-button" onClick={signOut} disabled={logout.isPending}>
-            <LogOut size={18} aria-hidden />
-            <span>Sign out</span>
-          </button>
-        </div>
-      </aside>
-      <div className="scrim" onClick={closeMenu} aria-hidden />
-
-      <main className="main">
-        <div className="container">
-          <Outlet context={admin} />
-        </div>
-      </main>
-    </div>
+    <SidebarProvider>
+      <AppSidebar admin={admin} />
+      <SidebarInset>
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              {crumbs.map((c, i) => (
+                <Fragment key={i}>
+                  {i > 0 && <BreadcrumbSeparator />}
+                  <BreadcrumbItem>
+                    {i < crumbs.length - 1 && c.to ? (
+                      <BreadcrumbLink asChild><Link to={c.to}>{c.label}</Link></BreadcrumbLink>
+                    ) : (
+                      <BreadcrumbPage className="max-w-48 truncate">{c.label}</BreadcrumbPage>
+                    )}
+                  </BreadcrumbItem>
+                </Fragment>
+              ))}
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
+          <div className="mx-auto w-full max-w-6xl space-y-6">
+            <Outlet context={admin} />
+          </div>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

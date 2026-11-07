@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
-import { errorMessage } from '../../api/client'
-import { ErrorNotice, Spinner } from '../../components/ui/misc'
+import { errorMessage } from '@/api/client'
+import { ErrorAlert } from '@/components/common/states'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthStatus } from './api'
 
 /** Gate for signed-in pages: sends people to setup or sign-in when needed. */
@@ -8,11 +9,17 @@ export function RequireAuth() {
   const status = useAuthStatus()
   const location = useLocation()
 
-  if (status.isPending) return <div className="page-center"><Spinner /></div>
+  if (status.isPending) {
+    return (
+      <div className="flex min-h-svh items-center justify-center p-6">
+        <Skeleton className="size-10 rounded-full" />
+      </div>
+    )
+  }
   if (status.isError) {
     return (
-      <div className="page-center">
-        <ErrorNotice message={errorMessage(status.error)} onRetry={() => status.refetch()} />
+      <div className="mx-auto flex min-h-svh max-w-md items-center p-6">
+        <ErrorAlert title="Can’t load the portal" message={errorMessage(status.error)} onRetry={() => status.refetch()} />
       </div>
     )
   }

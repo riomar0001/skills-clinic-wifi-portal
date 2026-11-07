@@ -61,6 +61,16 @@ export function useUpdateWifiUser(username: string) {
   })
 }
 
+/** Enable or disable any user (row actions in the list). */
+export function useSetWifiEnabled() {
+  const invalidate = useInvalidateAfterChange()
+  return useMutation({
+    mutationFn: ({ username, enabled }: { username: string; enabled: boolean }) =>
+      api.patch<WifiUser>(path(username), { enabled }),
+    onSuccess: invalidate,
+  })
+}
+
 export function useSetWifiPassword(username: string) {
   const invalidate = useInvalidateAfterChange()
   return useMutation({

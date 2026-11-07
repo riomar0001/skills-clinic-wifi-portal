@@ -1,15 +1,16 @@
+import { CircleAlert } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { errorMessage } from '../../api/client'
-import { Button } from '../../components/ui/Button'
-import { InputField, TextAreaField } from '../../components/ui/Field'
-import { Modal } from '../../components/ui/Modal'
-import { ErrorNotice } from '../../components/ui/misc'
-import { USERNAME_HINT, USERNAME_PATTERN, generatePassword } from '../../lib/password'
+import { errorMessage } from '@/api/client'
+import { FormField } from '@/components/common/FormField'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { USERNAME_HINT, USERNAME_PATTERN, generatePassword } from '@/lib/password'
 import { useCreateWifiUser } from './api'
 import type { Credentials } from './CredentialsDialog'
 import { WifiPasswordInput } from './PasswordInput'
-
-const FORM_ID = 'create-wifi-user'
 
 interface Props {
   open: boolean
@@ -40,47 +41,50 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
       { username: name, password, full_name: fullName, note },
       {
         onSuccess: () => {
-          const credentials = { username: name, password }
           close()
-          onCreated(credentials)
+          onCreated({ username: name, password })
         },
       },
     )
   }
 
   return (
-    <Modal
-      open={open}
-      title="Add Wi-Fi user"
-      description="Each person gets their own username and password for the Wi-Fi."
-      onClose={close}
-      footer={
-        <>
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button type="submit" form={FORM_ID} variant="primary" loading={create.isPending}>Add user</Button>
-        </>
-      }
-    >
-      <form id={FORM_ID} className="stack" onSubmit={submit}>
-        {create.isError && <ErrorNotice message={errorMessage(create.error)} />}
-        <InputField
-          label="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value.toLowerCase())}
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          pattern={USERNAME_PATTERN}
-          title={USERNAME_HINT}
-          hint={USERNAME_HINT}
-          maxLength={32}
-          required
-          autoFocus
-        />
-        <InputField label="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={80} hint="Optional" />
-        <WifiPasswordInput value={password} onChange={setPassword} />
-        <TextAreaField label="Note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} hint="Optional, e.g. role or device" />
-      </form>
-    </Modal>
+    <Dialog open={open} onOpenChange={(next) => !next && !create.isPending && close()}>
+      <DialogContent className="sm:max-w-lg">
+        <form onSubmit={submit} className="grid gap-6">
+          <DialogHeader>
+            <DialogTitle>Add Wi-Fi user</DialogTitle>
+            <DialogDescription>Each person gets their own username and password for the Wi-Fi.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-5">
+            {create.isError && (
+              <Alert variant="destructive">
+                <CircleAlert />
+                <AlertDescription>{errorMessage(create.error)}</AlertDescription>
+              </Alert>
+            )}
+            <div className="grid gap-5 sm:grid-cols-2">
+              <FormField label="Username" hint={USERNAME_HINT}>
+                <Input value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} autoComplete="off"
+                  autoCapitalize="none" spellCheck={false} pattern={USERNAME_PATTERN} maxLength={32} required autoFocus />
+              </FormField>
+              <FormField label="Full name" hint="Optional">
+                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={80} />
+              </FormField>
+            </div>
+            <FormField label="Password" hint="8-64 characters. Generated passwords are easy to type on a phone.">
+              <WifiPasswordInput value={password} onChange={setPassword} />
+            </FormField>
+            <FormField label="Note" hint="Optional, e.g. role or device">
+              <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} />
+            </FormField>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={close} disabled={create.isPending}>Cancel</Button>
+            <Button type="submit" disabled={create.isPending}>{create.isPending ? 'Adding…' : 'Add user'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

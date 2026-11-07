@@ -1,6 +1,8 @@
 import { Activity } from 'lucide-react'
-import { errorMessage } from '../../api/client'
-import { Card, EmptyState, ErrorNotice, PageHeader, Spinner } from '../../components/ui/misc'
+import { errorMessage } from '@/api/client'
+import { PageHeader } from '@/components/common/PageHeader'
+import { EmptyState, ErrorAlert, ListSkeleton } from '@/components/common/states'
+import { Card, CardContent } from '@/components/ui/card'
 import { useActivity } from './api'
 import { ActivityList } from './ActivityList'
 
@@ -10,15 +12,17 @@ export function ActivityPage() {
     <>
       <PageHeader title="Activity" description="Who changed what, newest first (last 200 events)." />
       <Card>
-        {activity.isPending ? (
-          <Spinner />
-        ) : activity.isError ? (
-          <ErrorNotice message={errorMessage(activity.error)} onRetry={() => activity.refetch()} />
-        ) : activity.data.length === 0 ? (
-          <EmptyState icon={<Activity size={22} />} title="Nothing yet" />
-        ) : (
-          <ActivityList entries={activity.data} />
-        )}
+        <CardContent>
+          {activity.isPending ? (
+            <ListSkeleton rows={6} />
+          ) : activity.isError ? (
+            <ErrorAlert message={errorMessage(activity.error)} onRetry={() => activity.refetch()} />
+          ) : activity.data.length === 0 ? (
+            <EmptyState icon={<Activity />} title="Nothing yet" />
+          ) : (
+            <ActivityList entries={activity.data} />
+          )}
+        </CardContent>
       </Card>
     </>
   )

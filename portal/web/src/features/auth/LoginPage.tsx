@@ -1,10 +1,13 @@
+import { CircleAlert } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
-import { errorMessage } from '../../api/client'
-import { AuthLayout } from '../../components/layout/AuthLayout'
-import { Button } from '../../components/ui/Button'
-import { InputField } from '../../components/ui/Field'
-import { ErrorNotice, Spinner } from '../../components/ui/misc'
+import { errorMessage } from '@/api/client'
+import { FormField } from '@/components/common/FormField'
+import { AuthLayout } from '@/components/layout/AuthLayout'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthStatus, useLogin } from './api'
 
 export function LoginPage() {
@@ -15,7 +18,7 @@ export function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
-  if (status.isPending) return <div className="page-center"><Spinner /></div>
+  if (status.isPending) return <AuthLayout title="Sign in"><Skeleton className="h-48" /></AuthLayout>
   if (status.data?.needs_setup) return <Navigate to="/setup" replace />
   if (status.data?.admin) return <Navigate to="/" replace />
 
@@ -28,30 +31,23 @@ export function LoginPage() {
 
   return (
     <AuthLayout title="Sign in" description="Manage who can use the Wi-Fi.">
-      <form className="stack" onSubmit={submit}>
-        {login.isError && <ErrorNotice message={errorMessage(login.error)} />}
-        <InputField
-          label="Username"
-          name="username"
-          autoComplete="username"
-          autoCapitalize="none"
-          spellCheck={false}
-          required
-          autoFocus
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <InputField
-          label="Password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Button type="submit" variant="primary" loading={login.isPending} className="btn-block">
-          Sign in
+      <form className="grid gap-5" onSubmit={submit}>
+        {login.isError && (
+          <Alert variant="destructive">
+            <CircleAlert />
+            <AlertDescription>{errorMessage(login.error)}</AlertDescription>
+          </Alert>
+        )}
+        <FormField label="Username">
+          <Input name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required autoFocus
+            value={username} onChange={(e) => setUsername(e.target.value)} />
+        </FormField>
+        <FormField label="Password">
+          <Input name="password" type="password" autoComplete="current-password" required
+            value={password} onChange={(e) => setPassword(e.target.value)} />
+        </FormField>
+        <Button type="submit" size="lg" className="w-full" disabled={login.isPending}>
+          {login.isPending ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
     </AuthLayout>
