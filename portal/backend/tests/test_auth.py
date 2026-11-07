@@ -58,4 +58,5 @@ def test_cross_site_and_header_guards(admin_client):
     assert big.status_code == 413
     r = admin_client.get("/api/auth/me")
     assert r.headers["X-Frame-Options"] == "DENY"
-    assert "default-src 'self'" in r.headers["Content-Security-Policy"]
+    csp = r.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp and "script-src 'self';" in csp

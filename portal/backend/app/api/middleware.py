@@ -9,7 +9,10 @@ CSRF_HEADER = "x-requested-with"
 CSRF_VALUE = "wifi-portal"
 
 SECURITY_HEADERS = {
-    "Content-Security-Policy": ("default-src 'self'; img-src 'self' data:; style-src 'self'; "
+    # Scripts only from this origin. Inline styles are allowed because the UI's toast library
+    # injects a <style> tag; styles can't run code, so this keeps the script protection intact.
+    "Content-Security-Policy": ("default-src 'self'; script-src 'self'; img-src 'self' data:; "
+                                "style-src 'self' 'unsafe-inline'; font-src 'self'; "
                                 "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"),
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
