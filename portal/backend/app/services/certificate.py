@@ -25,7 +25,9 @@ class CertificateService:
         self.settings = settings
 
     def info(self) -> CertificateInfo:
-        path = self.settings.certs_dir / "server.pem"
+        # server.crt is the public certificate only; server.pem also holds the private key,
+        # which the portal never needs (and, running as non-root, can't read).
+        path = self.settings.certs_dir / "server.crt"
         try:
             certs = x509.load_pem_x509_certificates(path.read_bytes())
         except (OSError, ValueError) as e:

@@ -23,7 +23,9 @@ def _write_cert(certs: Path) -> None:
             .serial_number(1).not_valid_before(now).not_valid_after(now + dt.timedelta(days=30))
             .sign(key, hashes.SHA256()))
     pem = cert.public_bytes(serialization.Encoding.PEM)
-    (certs / "server.pem").write_bytes(pem)
+    # Like openssl's output: a text dump before the PEM block.
+    (certs / "server.crt").write_bytes(b"Certificate:\n    Data: ...\n" + pem)
+    (certs / "server.pem").write_text("PRIVATE KEY + cert - the portal must not need this")
     (certs / "ca.pem").write_bytes(pem)
     (certs / "ca.der").write_bytes(cert.public_bytes(serialization.Encoding.DER))
     (certs / "ca.key").write_text("PRIVATE - must never be served")
