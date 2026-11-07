@@ -137,7 +137,7 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
           </Card>
 
           <Card title="Password">
-            <p className="muted">Set a new password if it was forgotten or shared. Last changed {formatDateTime(user.updated_at)}.</p>
+            <p className="muted">Set a new password if it was forgotten or shared.</p>
             <div className="row-end">
               <Button
                 icon={<KeyRound size={16} />}
