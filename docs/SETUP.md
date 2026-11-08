@@ -442,20 +442,21 @@ of an error. It works with or without step 12.
 1. Cloudflare → your domain → **DNS → Records**: **delete** the `wifi` A record from step 12b.
    The tunnel can't add its own record while that one exists. `https://wifi.riomar.dev` doesn't
    load until the next step is done.
-2. Back in the tunnel → **Public hostnames** (or **Published application routes**) → **Add**:
+2. Back in the tunnel → **Published application routes** (older dashboards: **Public hostnames**)
+   → **Add**:
 
    | Field | Value |
    |---|---|
    | Subdomain | `wifi` |
    | Domain | `riomar.dev` |
    | Path | empty |
-   | Service type | **HTTP** |
-   | URL | `proxy:8081` |
+   | Service URL | `http://proxy:8081` (older dashboards: Service type **HTTP**, URL `proxy:8081`) |
 
-   It must be `proxy:8081`. That entrance takes the visitor's address from Cloudflare, so the
-   wrong-password lock can't be dodged. `portal:8080` would let anyone fake their address, and
-   `proxy:80` loops forever.
-3. **Save.** Cloudflare adds a proxied (orange cloud) `wifi` record pointing at the tunnel.
+   It must be `http://proxy:8081`: plain HTTP is fine because that hop stays inside Docker, and
+   visitors still get HTTPS from Cloudflare. That entrance takes the visitor's address from
+   Cloudflare, so the wrong-password lock can't be dodged. `portal:8080` would let anyone fake their
+   address, and `proxy:80` loops forever.
+3. **Add route.** Cloudflare adds a proxied (orange cloud) `wifi` record pointing at the tunnel.
    Open `https://wifi.riomar.dev`, also on a phone using mobile data: the portal should load.
 
 ### c. Deploy the offline page
@@ -609,6 +610,6 @@ able to join, and `nslookup wifi.riomar.dev 1.1.1.1` should answer the new addre
 | Certificate: "rateLimited" | Too many real attempts for that name. Wait (the message says until when); test with `--dry-run`. |
 | Offline page, but the server is on | `docker compose ps` shows `wifi-tunnel` Up? `docker compose logs tunnel` should show `Registered tunnel connection`; a token error means `tunnel/token` is wrong. The server needs internet access. |
 | Cloudflare "Error 1033" instead of the offline page | The tunnel is down and the Worker isn't deployed, or its route doesn't match the name (step 13c). |
-| "Too many redirects" through the tunnel | The tunnel's service URL is `proxy:80`; change it to `proxy:8081` (step 13b). |
+| "Too many redirects" through the tunnel | The tunnel's service URL is `http://proxy:80`; change it to `http://proxy:8081` (step 13b). |
 | Android still warns after step 12 | It kept the old settings: forget the network, then choose **Use system certificates** and enter the domain. |
 | Need the full login server trace | `docker compose stop radius`, then `docker run --rm -p 1812:1812/udp -v "$PWD/data:/mnt/local:ro" wifi-radius sh -c "sed 's/freeradius -f/freeradius -X/' /start.sh > /tmp/s && sh /tmp/s"`, try a login, Ctrl+C, `docker compose start radius`. |
