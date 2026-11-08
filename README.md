@@ -103,6 +103,12 @@ In `http://192.168.1.1`:
 (MAC `XX-XX-XX-XX-XX-XX`, from `ipconfig /all`) and **192.168.0.83** for the router's WAN side
 (MAC `XX:XX:XX:XX:XX:XX`, on the router's **Status** page).
 
+**Other routers work too.** Any router or access point with **WPA2-Enterprise** (802.1X) and a
+RADIUS server setting can replace or join the TL-WR840N, with the same settings and the network
+name **CCE Skills Clinic WiFi**. Several routers can share one server for more coverage and more
+devices. Mesh systems and ISP modems often lack Enterprise mode. See
+[docs/SETUP.md](docs/SETUP.md#using-another-router-or-more-than-one).
+
 **Changing the server's address later** is fine: update the router's **RADIUS Server IP** and the
 `wifi` DNS record in Cloudflare (if you use HTTPS). Nothing in the project needs changing. See
 [docs/SETUP.md](docs/SETUP.md#changing-the-servers-address).

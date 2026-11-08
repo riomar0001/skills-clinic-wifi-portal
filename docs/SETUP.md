@@ -23,7 +23,7 @@ When you're done you'll have:
 | A machine that stays on | Windows 10/11 or Linux, 2 GB RAM is plenty. If it's off, nobody new can join the Wi-Fi. |
 | A network cable | The server must be **wired** to the modem or a router LAN port, not on Wi-Fi (once Wi-Fi asks for logins, a server on Wi-Fi couldn't log itself in). |
 | The project folder | This repository, including the `data` folder if you're moving an existing install. |
-| The TP-Link TL-WR840N | And its admin password, to change its Wi-Fi security later. |
+| The TP-Link TL-WR840N | And its admin password, to change its Wi-Fi security later. Another router works too if it supports WPA2-Enterprise ([Using another router](#using-another-router-or-more-than-one)). |
 
 ## 2. Install Docker
 
@@ -186,6 +186,39 @@ In the TP-Link at `http://192.168.1.1`:
 4. **Save.** Every device on the Wi-Fi disconnects and must rejoin with its own username and password.
 
 Add yourself as a Wi-Fi user **before** saving, or nobody can join (step 9).
+
+### Using another router (or more than one)
+
+Nothing on the server is tied to the TL-WR840N. The router only passes each login to the server and
+lets the device on if the server says yes; accounts, passwords, expiry, device limits, history and
+the QR code all live on the server. Any router or access point works if its Wi-Fi security menu has
+**WPA2-Enterprise** (also called *WPA/WPA2-Enterprise* or *802.1X*) with fields for a **RADIUS
+server IP, port and password**. If it only offers *WPA2-Personal*, it won't work.
+
+| Usually works | Usually doesn't |
+|---|---|
+| Most standalone TP-Link, ASUS and Netgear routers | ISP-supplied modem/routers (often locked down) |
+| Business access points: TP-Link Omada, Ubiquiti UniFi, MikroTik, Aruba Instant On, Ruckus, Cisco | Many mesh systems (e.g. TP-Link Deco, eero) |
+| WPA3-Enterprise routers (they also offer WPA2-Enterprise) | Travel and pocket routers |
+
+Check the exact model's manual before buying. To set one up:
+
+1. Turn off **WPS** if it has it.
+2. Wi-Fi security **WPA2-Enterprise**, encryption **AES**, RADIUS server = the server's fixed
+   address, port **1812**, password = the router secret (**Server → Show secret**). Accounting
+   (port 1813) isn't used; leave it off or empty.
+3. Name the network **CCE Skills Clinic WiFi**, or the QR codes point to the wrong network. To use
+   another name, change `WIFI_SSID` in `portal/web/src/lib/wifi.ts` and run the setup again.
+4. The router must reach the server on **UDP 1812**: plug its WAN port into the same network as the
+   server, as with the TL-WR840N, and allow 1812 in the firewall (step 7).
+
+The server already accepts any router that knows the secret, so nothing changes on the server, and
+devices that joined before only need to rejoin if the network name changed.
+
+**More than one router**, for example one per room: give them all the same network name, security
+settings and RADIUS server. People then move between them with the same login, and the device limit
+and history count across all of them. This is also how to serve more people at once: one TL-WR840N
+handles roughly 15–25 active devices.
 
 ## 9. Add Wi-Fi users and test
 
@@ -427,7 +460,7 @@ tied to the name (`wifi.riomar.dev`), not the address. Only these places point t
 | Where | What to change | Until you do |
 |---|---|---|
 | Modem DHCP (step 6) | Reserve the new address for the server's MAC, or set it on the server itself | The address may change again |
-| Router → **Wireless Security** (step 8) | **RADIUS Server IP** = the new address, then **Save** | Nobody can join the Wi-Fi |
+| Router → **Wireless Security** (step 8), on every router | **RADIUS Server IP** = the new address, then **Save** | Nobody can join the Wi-Fi |
 | Cloudflare → your domain → **DNS → Records** (step 12) | Edit the `wifi` record's **IPv4 address**; keep it **DNS only** | `https://wifi.riomar.dev` doesn't load |
 
 Nothing else changes: no rebuild or setup run, and devices keep their Wi-Fi settings without
