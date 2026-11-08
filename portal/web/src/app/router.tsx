@@ -1,5 +1,7 @@
 import { Navigate, createBrowserRouter } from 'react-router'
 import { AppShell } from '@/components/layout/AppShell'
+import { AccessRequestsPage } from '@/features/access-requests/AccessRequestsPage'
+import { RequestAccessPage } from '@/features/access-requests/RequestAccessPage'
 import { AccountPage } from '@/features/account/AccountPage'
 import { ActivityPage } from '@/features/activity/ActivityPage'
 import { AdminsPage } from '@/features/admins/AdminsPage'
@@ -18,6 +20,7 @@ export const router = createBrowserRouter([
   // One sign-in page for admins and Wi-Fi users; it sends each to their own area.
   { path: '/login', element: <LoginPage /> },
   { path: '/setup', element: <SetupPage /> },
+  { path: '/request-access', element: <RequestAccessPage /> },
   // Old address of the Wi-Fi password page; links shared earlier still work.
   { path: '/change-password', element: <Navigate to="/me" replace /> },
   {
@@ -34,6 +37,7 @@ export const router = createBrowserRouter([
           { index: true, element: <DashboardPage /> },
           { path: 'wifi-users', element: <WifiUsersPage /> },
           { path: 'wifi-users/:username', element: <WifiUserDetailPage /> },
+          { path: 'access-requests', element: <AccessRequestsPage /> },
           { path: 'admins', element: <AdminsPage /> },
           { path: 'activity', element: <ActivityPage /> },
           { path: 'server', element: <ServerPage /> },

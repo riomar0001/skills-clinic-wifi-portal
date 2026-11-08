@@ -1,4 +1,4 @@
-import { Activity, LayoutDashboard, Server, ShieldCheck, Users, type LucideIcon } from 'lucide-react'
+import { Activity, Inbox, LayoutDashboard, Server, ShieldCheck, Users, type LucideIcon } from 'lucide-react'
 
 export interface NavItem {
   to: string
@@ -12,6 +12,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/wifi-users', label: 'Wi-Fi users', icon: Users },
+      { to: '/access-requests', label: 'Access requests', icon: Inbox },
       { to: '/admins', label: 'Admins', icon: ShieldCheck },
     ],
   },
@@ -28,6 +29,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
 export const SECTION_LABELS: Record<string, string> = {
   '': 'Dashboard',
   'wifi-users': 'Wi-Fi users',
+  'access-requests': 'Access requests',
   admins: 'Admins',
   activity: 'Activity',
   server: 'Server',

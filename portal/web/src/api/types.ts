@@ -90,10 +90,22 @@ export interface Dashboard {
   wifi_active: number
   wifi_disabled: number
   wifi_expired: number
+  /** Access requests waiting for an admin. */
+  access_requests: number
   admins: number
   radius: { ok: boolean; detail: string }
   certificate: Certificate | null
   recent_activity: ActivityEntry[]
+}
+
+/** Someone who asked for Wi-Fi access from the sign-in page, waiting for an admin. */
+export interface AccessRequest {
+  id: number
+  username: string
+  first_name: string
+  last_name: string
+  email: string
+  created_at: number
 }
 
 /** One CSV row as the server read it; password is only set after a real import (shown once). */

@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, CalendarX, CircleCheck, CircleX, Plus, UserCheck, UserX, Users, type LucideIcon } from 'lucide-react'
+import { ArrowRight, CalendarX, CircleCheck, CircleX, Inbox, Plus, UserCheck, UserX, Users, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { api, errorMessage } from '@/api/client'
 import type { Dashboard } from '@/api/types'
 import { PageHeader } from '@/components/common/PageHeader'
 import { ErrorAlert, PageSkeleton } from '@/components/common/states'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -56,6 +57,19 @@ export function DashboardPage() {
         description="Overview of Wi-Fi access."
         actions={<Button asChild><Link to="/wifi-users?new=1"><Plus /> Add Wi-Fi user</Link></Button>}
       />
+
+      {d.access_requests > 0 && (
+        <Alert>
+          <Inbox />
+          <AlertTitle>
+            {d.access_requests === 1 ? '1 access request is' : `${d.access_requests} access requests are`} waiting
+          </AlertTitle>
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+            People asked for Wi-Fi access from the sign-in page.
+            <Button size="sm" variant="outline" asChild><Link to="/access-requests">Review <ArrowRight /></Link></Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Wi-Fi users" value={d.wifi_total} icon={Users} to="/wifi-users" />

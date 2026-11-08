@@ -1,6 +1,6 @@
 import { CircleAlert } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { errorMessage } from '@/api/client'
 import { FormField } from '@/components/common/FormField'
 import { AuthLayout } from '@/components/layout/AuthLayout'
@@ -57,6 +57,12 @@ export function LoginPage() {
         <Button type="submit" size="lg" className="w-full" disabled={login.isPending}>
           {login.isPending ? 'Signing in…' : 'Sign in'}
         </Button>
+        <div className="grid gap-2 border-t pt-5 text-center">
+          <span className="text-sm text-muted-foreground">No Wi-Fi account yet?</span>
+          <Button variant="outline" size="lg" className="w-full" asChild>
+            <Link to="/request-access">Request Wi-Fi access</Link>
+          </Button>
+        </div>
       </form>
     </AuthLayout>
   )

@@ -8,11 +8,13 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { useAccessRequests } from '@/features/access-requests/api'
 import { Logo } from './Logo'
 import { NAV_GROUPS } from './nav'
 import { NavUser } from './NavUser'
@@ -24,6 +26,8 @@ function isActive(pathname: string, to: string) {
 export function AppSidebar({ admin }: { admin: string }) {
   const { pathname } = useLocation()
   const { setOpenMobile } = useSidebar()
+  const waiting = useAccessRequests().data?.length ?? 0
+  const badges: Record<string, number> = { '/access-requests': waiting }
 
   return (
     <Sidebar collapsible="icon">
@@ -57,6 +61,9 @@ export function AppSidebar({ admin }: { admin: string }) {
                         <span>{label}</span>
                       </NavLink>
                     </SidebarMenuButton>
+                    {badges[to] > 0 && (
+                      <SidebarMenuBadge aria-label={`${badges[to]} waiting`}>{badges[to]}</SidebarMenuBadge>
+                    )}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
