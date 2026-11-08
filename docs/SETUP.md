@@ -273,8 +273,9 @@ password. A Wi-Fi user's sign-in never opens admin pages.
 
 The certificate from step 4 is made here, so every device asks once whether to trust it. With a
 free **Let's Encrypt** certificate for a domain you own, Android connects with **Use system
-certificates** and no warning. iPhones, Macs and Windows still ask once, but show the certificate as
-verified.
+certificates** and no warning. iPhones, Macs and Windows still ask once: an iPhone shows
+**Not Trusted** for every Wi-Fi certificate it hasn't seen, even a Let's Encrypt one. That's normal;
+tap **Trust** if it shows your name (e.g. `wifi.riomar.dev`) issued by Let's Encrypt (`R…` or `YR…`).
 
 You need a domain whose DNS is on **Cloudflare** (this install uses `riomar.dev`). The server does
 **not** need to be reachable from the internet, and you **don't** create a DNS record for the name:

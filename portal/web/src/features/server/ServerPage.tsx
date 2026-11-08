@@ -36,7 +36,7 @@ export function ServerPage() {
           <CardTitle>Certificate</CardTitle>
           <CardDescription>
             {cert.data?.trusted
-              ? 'Publicly trusted (Let’s Encrypt), renewed automatically. Android: CA certificate “Use system certificates”, domain as below. iPhone and Windows still ask once and show it as verified.'
+              ? 'Publicly trusted (Let’s Encrypt), renewed automatically. Android: CA certificate “Use system certificates”, domain as below. iPhones still show “Not Trusted” and ask once (normal for Wi-Fi): tap Trust if it says this name, issued by Let’s Encrypt (R or YR).'
               : 'Phones show this the first time they join. Tell people to check the name before tapping Trust. A different name could mean someone is faking the network.'}
           </CardDescription>
         </CardHeader>
