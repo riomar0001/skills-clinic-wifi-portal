@@ -22,20 +22,21 @@ def radius_expiration(epoch: int) -> str:
     return time.strftime("%b %d %Y %H:%M:%S", time.gmtime(epoch))
 
 
-def users_line(username: str, nt_hash: str, expires_at: int | None, devices: list[str] | None = None) -> str:
-    """One users-file entry. With a device list, the entry only matches logins from those MAC addresses
-    (device-check.unlang puts the address in the tunnel), so any other device gets no password: refused."""
+def users_entries(username: str, nt_hash: str, expires_at: int | None, devices: list[str] | None = None) -> list[str]:
+    """Users-file lines for one person. With a device list there is one line per allowed MAC address
+    (device-check.unlang puts the address in the tunnel); a login from any other device matches no line,
+    gets no password, and is refused.
+    Plain == per device, not one =~ regex: FreeRADIUS 3.2.8 segfaults on a regex check item in this file."""
     if not _USERNAME_RE.match(username) or not _NT_HASH_RE.match(nt_hash):
         raise ValueError(f"refusing to write an invalid users-file entry for {username!r}")
-    check = ""
-    if devices is not None:
-        if not devices or not all(MAC_RE.match(m) for m in devices):
-            raise ValueError(f"refusing to write an invalid device list for {username!r}")
-        check = f'Calling-Station-Id =~ "^({"|".join(devices)})$", '
-    line = f"{username} {check}NT-Password := 0x{nt_hash}"
+    reply = f"NT-Password := 0x{nt_hash}"
     if expires_at is not None:
-        line += f', Expiration := "{radius_expiration(expires_at)}"'
-    return line
+        reply += f', Expiration := "{radius_expiration(expires_at)}"'
+    if devices is None:
+        return [f"{username} {reply}"]
+    if not devices or not all(MAC_RE.match(m) for m in devices):
+        raise ValueError(f"refusing to write an invalid device list for {username!r}")
+    return [f'{username} Calling-Station-Id == "{mac}", {reply}' for mac in devices]
 
 
 class RadiusUsersExporter:
@@ -43,6 +44,6 @@ class RadiusUsersExporter:
         self.settings = settings
 
     def export(self, db: Session) -> None:
-        lines = [HEADER] + [users_line(u.username, u.nt_hash, u.expires_at, u.allowed_devices())
-                            for u in WifiUserRepository(db).enabled_users()]
+        lines = [HEADER] + [line for u in WifiUserRepository(db).enabled_users()
+                            for line in users_entries(u.username, u.nt_hash, u.expires_at, u.allowed_devices())]
         atomic_write(self.settings.users_file, "\n".join(lines) + "\n")

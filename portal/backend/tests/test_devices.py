@@ -1,3 +1,4 @@
+import re
 import time
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 from app.main import create_app
 from app.services.connection_log import normalize_mac
-from app.services.radius_export import users_line
+from app.services.radius_export import users_entries
 from tests.conftest import PORTAL_HEADERS, person, setup_admin
 
 PHONE, LAPTOP, TABLET = "AA-BB-CC-DD-EE-01", "AA-BB-CC-DD-EE-02", "AA-BB-CC-DD-EE-03"
@@ -26,7 +27,12 @@ def _login(log: Path, username: str, mac: str, accepted: bool = True) -> None:
 
 
 def _users_line(settings: Settings, username: str) -> str:
-    return next(line for line in settings.users_file.read_text().splitlines() if line.startswith(f"{username} "))
+    """All of a person's users-file lines (one per allowed device when limited), joined."""
+    return "\n".join(line for line in settings.users_file.read_text().splitlines() if line.startswith(f"{username} "))
+
+
+def _allowed(settings: Settings, username: str) -> list[str]:
+    return re.findall(r'Calling-Station-Id == "([0-9A-F-]+)"', _users_line(settings, username))
 
 
 def test_normalize_mac():
@@ -38,14 +44,17 @@ def test_normalize_mac():
 
 def test_users_line_refuses_anything_that_could_inject_config():
     nt = "A" * 32
-    assert users_line("ana", nt, None, [PHONE]) == f'ana Calling-Station-Id =~ "^({PHONE})$", NT-Password := 0x{nt}'
+    assert users_entries("ana", nt, None, [PHONE, LAPTOP]) == [
+        f'ana Calling-Station-Id == "{PHONE}", NT-Password := 0x{nt}',
+        f'ana Calling-Station-Id == "{LAPTOP}", NT-Password := 0x{nt}',
+    ]
     for bad in ([], ['.*'], [f'{PHONE}" , Auth-Type := Accept']):
         with pytest.raises(ValueError):
-            users_line("ana", nt, None, bad)
+            users_entries("ana", nt, None, bad)
     with pytest.raises(ValueError):
-        users_line('ana", Auth-Type := Accept', nt, None)
+        users_entries('ana", Auth-Type := Accept', nt, None)
     with pytest.raises(ValueError):
-        users_line("ana", "not-a-hash", None)
+        users_entries("ana", "not-a-hash", None)
 
 
 def test_limit_registers_devices_then_restricts(tmp_path, settings):
@@ -61,7 +70,7 @@ def test_limit_registers_devices_then_restricts(tmp_path, settings):
 
         _login(log, "ana", "aa:bb:cc:dd:ee:02")  # any MAC format is normalised
         assert [d["mac"] for d in c.get("/api/wifi-users/ana/devices").json()] == [PHONE, LAPTOP]
-        assert f'Calling-Station-Id =~ "^({PHONE}|{LAPTOP})$"' in _users_line(settings, "ana")  # limit reached
+        assert _allowed(settings, "ana") == [PHONE, LAPTOP]  # limit reached
         assert c.get("/api/wifi-users/ana").json()["device_count"] == 2
 
         _login(log, "ana", TABLET, accepted=False)  # refused devices are never registered
@@ -87,7 +96,7 @@ def test_changing_the_limit(tmp_path, settings):
 
         assert c.patch("/api/wifi-users/ben", json={"device_limit": 1}).json()["device_limit"] == 1
         # Over the limit: both registered devices keep working, new ones are refused.
-        assert f'"^({PHONE}|{LAPTOP})$"' in _users_line(settings, "ben")
+        assert _allowed(settings, "ben") == [PHONE, LAPTOP]
         assert c.patch("/api/wifi-users/ben", json={"first_name": "Ben"}).json()["device_limit"] == 1  # kept
         assert c.patch("/api/wifi-users/ben", json={"device_limit": None}).json()["device_limit"] is None
         assert "Calling-Station-Id" not in _users_line(settings, "ben")

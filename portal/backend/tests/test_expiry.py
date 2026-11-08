@@ -3,7 +3,7 @@ import time
 from sqlalchemy import update
 
 from app.db.models import WifiUser
-from app.services.radius_export import radius_expiration, users_line
+from app.services.radius_export import radius_expiration, users_entries
 from tests.conftest import person
 
 DAY = 86400
@@ -18,8 +18,8 @@ def _expire_now(client, username: str) -> None:
 
 def test_radius_line_format():
     assert radius_expiration(0) == "Jan 01 1970 00:00:00"
-    assert users_line("ana", "AB" * 16, None) == f"ana NT-Password := 0x{'AB' * 16}"
-    assert users_line("ana", "AB" * 16, 86400).endswith(', Expiration := "Jan 02 1970 00:00:00"')
+    assert users_entries("ana", "AB" * 16, None) == [f"ana NT-Password := 0x{'AB' * 16}"]
+    assert users_entries("ana", "AB" * 16, 86400)[0].endswith(', Expiration := "Jan 02 1970 00:00:00"')
 
 
 def test_create_with_expiry_and_clear_it(admin_client, settings):
