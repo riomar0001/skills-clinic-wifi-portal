@@ -10,12 +10,14 @@ from fastapi import APIRouter, Path, Query, Request
 from fastapi.responses import FileResponse, Response
 
 from app.api.deps import CurrentAdminDep, DbDep, SettingsDep
-from app.api.schemas import ActivityOut, CertificateOut, DashboardOut, RadiusStatusOut
+from app.api.schemas import (ActivityOut, CertificateOut, ConfirmPasswordIn, DashboardOut, RadiusStatusOut,
+                             RouterSecretOut)
 from app.core.errors import NotFound
 from app.repositories.activity import ActivityRepository
 from app.repositories.admins import AdminRepository
 from app.repositories.wifi_users import WifiUserRepository
 from app.services.certificate import CertificateService
+from app.services.router_secret import RouterSecretService
 
 router = APIRouter(prefix="/api", tags=["system"])
 
@@ -53,6 +55,14 @@ def certificate_file(filename: Annotated[str, Path(pattern=r"^ca\.(der|pem)$")],
                      _: CurrentAdminDep, settings: SettingsDep) -> FileResponse:
     path, media_type = CertificateService(settings).download(filename)
     return FileResponse(path, media_type=media_type, filename=filename)
+
+
+@router.post("/router-secret", response_model=RouterSecretOut)
+def router_secret(body: ConfirmPasswordIn, request: Request, current: CurrentAdminDep, db: DbDep,
+                  settings: SettingsDep) -> RouterSecretOut:
+    """The secret the router needs. Asks for the admin's password again, even when signed in."""
+    revealed = RouterSecretService(db, settings, request.app.state.throttle).reveal(current.admin, body.password)
+    return RouterSecretOut(secret=revealed.secret, clients_conf=revealed.clients_conf)
 
 
 @router.get("/backup")

@@ -120,6 +120,15 @@ class CertificateOut(BaseModel):
     sha256: str
 
 
+class ConfirmPasswordIn(_In):
+    password: str = Field(max_length=200)
+
+
+class RouterSecretOut(BaseModel):
+    secret: str
+    clients_conf: str
+
+
 class DashboardOut(BaseModel):
     wifi_total: int
     wifi_active: int
