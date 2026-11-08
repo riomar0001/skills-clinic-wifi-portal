@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/format'
+import { BackupDialog } from './BackupDialog'
 import { RouterSecretDialog } from './RouterSecretDialog'
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -26,6 +27,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 export function ServerPage() {
   const cert = useQuery({ queryKey: ['certificate'], queryFn: () => api.get<Certificate>('/api/certificate') })
   const [secretOpen, setSecretOpen] = useState(false)
+  const [backupOpen, setBackupOpen] = useState(false)
 
   return (
     <>
@@ -133,13 +135,12 @@ export function ServerPage() {
             </Alert>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" asChild>
-              <a href="/api/backup" download><Database /> Download backup</a>
-            </Button>
+            <Button variant="outline" onClick={() => setBackupOpen(true)}><Database /> Download backup</Button>
           </CardFooter>
         </Card>
       </div>
       <RouterSecretDialog open={secretOpen} onClose={() => setSecretOpen(false)} />
+      <BackupDialog open={backupOpen} onClose={() => setBackupOpen(false)} />
     </>
   )
 }

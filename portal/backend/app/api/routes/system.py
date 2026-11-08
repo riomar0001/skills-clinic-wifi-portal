@@ -17,6 +17,7 @@ from app.repositories.access_requests import AccessRequestRepository
 from app.repositories.activity import ActivityRepository
 from app.repositories.admins import AdminRepository
 from app.repositories.wifi_users import WifiUserRepository
+from app.services.admin_password import confirm_admin_password
 from app.services.certificate import CertificateService
 from app.services.router_secret import RouterSecretService
 
@@ -67,9 +68,14 @@ def router_secret(body: ConfirmPasswordIn, request: Request, current: CurrentAdm
     return RouterSecretOut(secret=revealed.secret, clients_conf=revealed.clients_conf)
 
 
-@router.get("/backup")
-def backup(_: CurrentAdminDep, settings: SettingsDep) -> Response:
-    """A consistent copy of the database (admins, Wi-Fi users, activity), safe to take while running."""
+@router.post("/backup")
+def backup(body: ConfirmPasswordIn, request: Request, current: CurrentAdminDep, db: DbDep,
+           settings: SettingsDep) -> Response:
+    """A consistent copy of the database (admins, Wi-Fi users, activity), safe to take while running.
+    It holds every password hash, so the admin types their password again, like for the router secret."""
+    confirm_admin_password(db, current.admin, body.password, request.app.state.throttle)
+    ActivityRepository(db).add(current.admin.username, "admin.backup", "database")
+    db.commit()
     with tempfile.TemporaryDirectory(dir=settings.db_path.parent) as tmp:
         target = FsPath(tmp) / "backup.db"
         src = sqlite3.connect(settings.db_path, timeout=10)

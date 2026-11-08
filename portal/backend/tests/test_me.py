@@ -30,9 +30,10 @@ def test_wifi_user_signs_in_on_the_shared_page(admin_client):
 
 def test_wifi_session_never_reaches_admin_api(admin_client):
     with _wifi_client(admin_client) as me:
-        for path in ("/api/wifi-users", "/api/admins", "/api/dashboard", "/api/backup", "/api/auth/me"):
+        for path in ("/api/wifi-users", "/api/admins", "/api/dashboard", "/api/auth/me"):
             assert me.get(path).status_code == 401, path
-        assert me.post("/api/router-secret", json={"password": "Sunflower-42"}).status_code == 401
+        for path in ("/api/router-secret", "/api/backup"):
+            assert me.post(path, json={"password": "Sunflower-42"}).status_code == 401, path
     # and an admin session isn't a Wi-Fi user session
     assert admin_client.get("/api/me").status_code == 401
 

@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.core.errors import NotAuthenticated, NotFound, TooManyAttempts
+from app.core.errors import NotFound
 from app.db.models import Admin
 from app.repositories.activity import ActivityRepository
-from app.services.admin_password import admin_password_matches
+from app.services.admin_password import confirm_admin_password
 from app.services.auth import LoginThrottle
 
 MAX_FILE_BYTES = 16 * 1024
@@ -29,13 +29,7 @@ class RouterSecretService:
         self.throttle = throttle
 
     def reveal(self, admin: Admin, password: str) -> RouterSecret:
-        # Wrong guesses here count toward the same lockout as signing in.
-        if (wait := self.throttle.seconds_locked(admin.username)) > 0:
-            raise TooManyAttempts(f"Too many wrong passwords. Try again in {wait // 60 + 1} minute(s).")
-        if not admin_password_matches(self.db, admin, password or ""):
-            self.throttle.failed(admin.username)
-            raise NotAuthenticated("Your password is wrong.")
-        self.throttle.succeeded(admin.username)
+        confirm_admin_password(self.db, admin, password, self.throttle)
 
         try:
             raw = self.settings.clients_file.read_bytes()[:MAX_FILE_BYTES]

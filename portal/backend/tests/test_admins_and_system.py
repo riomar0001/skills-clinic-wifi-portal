@@ -168,10 +168,24 @@ def test_certificate_and_downloads(admin_client):
     assert admin_client.get("/api/certificate/..%2Fclients.conf").status_code in (404, 422)
 
 
-def test_backup_is_sqlite(admin_client):
-    r = admin_client.get("/api/backup")
+def test_backup_asks_for_the_password_again(admin_client):
+    assert admin_client.get("/api/backup").status_code == 405  # no one-click download any more
+    r = admin_client.post("/api/backup", json={"password": "wrong-horse-1"})
+    assert r.status_code == 401 and r.json()["detail"] == "Your password is wrong."
+    assert admin_client.get("/api/auth/me").status_code == 200  # a wrong password doesn't sign them out
+
+    r = admin_client.post("/api/backup", json={"password": "correct-horse-1"})
     assert r.status_code == 200
     assert r.content.startswith(b"SQLite format 3\x00")
+    assert "attachment" in r.headers["content-disposition"]
+    assert admin_client.get("/api/activity").json()[0]["action"] == "admin.backup"
+
+
+def test_backup_wrong_passwords_count_toward_the_lock(admin_client):
+    for _ in range(5):
+        admin_client.post("/api/backup", json={"password": "wrong-horse-1"})
+    r = admin_client.post("/api/backup", json={"password": "correct-horse-1"})
+    assert r.status_code == 429
 
 
 def _fake_radius(secret: bytes, sock: socket.socket) -> None:
