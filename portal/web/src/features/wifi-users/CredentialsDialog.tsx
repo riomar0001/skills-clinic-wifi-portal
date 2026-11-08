@@ -35,7 +35,7 @@ export function CredentialsDialog({ credentials, onClose }: { credentials: Crede
         </DialogHeader>
         {credentials && (
           <div className="grid gap-4">
-            <CredentialRow label="Username" value={credentials.username} />
+            <CredentialRow label="Username (Student/Faculty ID)" value={credentials.username} />
             <CredentialRow label="Password" value={credentials.password} />
             <Alert>
               <Info />

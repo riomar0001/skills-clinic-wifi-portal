@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { describeExpiry, userStatus } from '@/lib/expiry'
 import { formatDateTime } from '@/lib/format'
 import { generatePassword } from '@/lib/password'
+import { EMAIL_DOMAIN, EMAIL_HINT, EMAIL_PATTERN, ID_LABEL, fullName } from '@/lib/person'
 import { cn } from '@/lib/utils'
 import { useDeleteWifiUser, useSetWifiPassword, useUpdateWifiUser, useWifiUser } from './api'
 import { CredentialsDialog, type Credentials } from './CredentialsDialog'
@@ -97,7 +98,9 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
   const setPassword = useSetWifiPassword(user.username)
   const remove = useDeleteWifiUser()
 
-  const [fullName, setFullName] = useState(user.full_name)
+  const [firstName, setFirstName] = useState(user.first_name)
+  const [lastName, setLastName] = useState(user.last_name)
+  const [email, setEmail] = useState(user.email ?? '')
   const [note, setNote] = useState(user.note)
   const [resetOpen, setResetOpen] = useState(false)
   const [newPassword, setNewPassword] = useState('')
@@ -105,11 +108,18 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmDisable, setConfirmDisable] = useState(false)
 
-  const dirty = fullName.trim() !== user.full_name || note.trim() !== user.note
+  const dirty = firstName.trim() !== user.first_name || lastName.trim() !== user.last_name
+    || email.trim().toLowerCase() !== (user.email ?? '') || note.trim() !== user.note
+  const discard = () => {
+    setFirstName(user.first_name)
+    setLastName(user.last_name)
+    setEmail(user.email ?? '')
+    setNote(user.note)
+  }
 
   const saveDetails = (e: FormEvent) => {
     e.preventDefault()
-    update.mutate({ full_name: fullName, note }, {
+    update.mutate({ first_name: firstName, last_name: lastName, note, ...(email.trim() ? { email: email.trim() } : {}) }, {
       onSuccess: () => toast.success('Details saved'),
       onError: (err) => toast.error(errorMessage(err)),
     })
@@ -151,14 +161,14 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-4">
-          <UserAvatar username={user.username} fullName={user.full_name} className="size-14 text-base" />
+          <UserAvatar username={user.username} firstName={user.first_name} lastName={user.last_name} className="size-14 text-base" />
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate font-mono text-2xl font-semibold tracking-tight">{user.username}</h1>
+              <h1 className="truncate text-2xl font-semibold tracking-tight">{fullName(user) || 'No name'}</h1>
               <StatusBadge status={userStatus(user)} />
             </div>
             <p className="text-sm text-muted-foreground">
-              {user.full_name || 'No name'} · added {formatDateTime(user.created_at)}
+              <span className="font-mono">{user.username}</span> · {user.email ?? 'no email'} · added {formatDateTime(user.created_at)}
             </p>
           </div>
         </div>
@@ -169,11 +179,23 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
           <form onSubmit={saveDetails} className="contents">
             <CardHeader>
               <CardTitle>Details</CardTitle>
-              <CardDescription>Only admins see these.</CardDescription>
+              <CardDescription>The ID can’t be changed: it’s their Wi-Fi username. The note is only for admins.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5">
-              <FormField label="Full name">
-                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={80} />
+              <FormField label={ID_LABEL}>
+                <Input value={user.username} readOnly disabled className="font-mono" />
+              </FormField>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <FormField label="First name">
+                  <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={60} required />
+                </FormField>
+                <FormField label="Last name">
+                  <Input value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={60} required />
+                </FormField>
+              </div>
+              <FormField label="UMindanao email" hint={user.email ? EMAIL_HINT : `Not set yet. ${EMAIL_HINT}`}>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoCapitalize="none"
+                  spellCheck={false} pattern={EMAIL_PATTERN} placeholder={`name@${EMAIL_DOMAIN}`} />
               </FormField>
               <FormField label="Note" hint="e.g. role, department or device">
                 <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={4} />
@@ -181,7 +203,7 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
             </CardContent>
             <CardFooter className="justify-end gap-2 border-t">
               {dirty && (
-                <Button type="button" variant="ghost" onClick={() => { setFullName(user.full_name); setNote(user.note) }}>
+                <Button type="button" variant="ghost" onClick={discard}>
                   Discard
                 </Button>
               )}

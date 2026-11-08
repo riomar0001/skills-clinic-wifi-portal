@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { USERNAME_HINT, USERNAME_PATTERN, generatePassword } from '@/lib/password'
+import { EMAIL_DOMAIN, EMAIL_HINT, EMAIL_PATTERN, ID_HINT, ID_LABEL } from '@/lib/person'
 import { useCreateWifiUser } from './api'
 import type { Credentials } from './CredentialsDialog'
 import { ExpiryPicker } from './ExpiryPicker'
@@ -22,7 +23,9 @@ interface Props {
 export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
   const create = useCreateWifiUser()
   const [username, setUsername] = useState('')
-  const [fullName, setFullName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
   const [note, setNote] = useState('')
   const [password, setPassword] = useState(generatePassword)
   const [expiresAt, setExpiresAt] = useState<number | null>(null)
@@ -30,7 +33,9 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
 
   const close = () => {
     setUsername('')
-    setFullName('')
+    setFirstName('')
+    setLastName('')
+    setEmail('')
     setNote('')
     setPassword(generatePassword())
     setExpiresAt(null)
@@ -43,7 +48,7 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
     e.preventDefault()
     const name = username.trim()
     create.mutate(
-      { username: name, password, full_name: fullName, note, expires_at: expiresAt },
+      { username: name, password, first_name: firstName, last_name: lastName, email: email.trim(), note, expires_at: expiresAt },
       {
         onSuccess: () => {
           close()
@@ -59,7 +64,7 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
         <form onSubmit={submit} className="grid gap-6">
           <DialogHeader>
             <DialogTitle>Add Wi-Fi user</DialogTitle>
-            <DialogDescription>Each person gets their own username and password for the Wi-Fi.</DialogDescription>
+            <DialogDescription>They join the Wi-Fi with their Student ID or Faculty ID and this password.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-5">
             {create.isError && (
@@ -68,15 +73,23 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
                 <AlertDescription>{errorMessage(create.error)}</AlertDescription>
               </Alert>
             )}
+            <FormField label={ID_LABEL} hint={ID_HINT}>
+              <Input value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} autoComplete="off"
+                autoCapitalize="none" spellCheck={false} pattern={USERNAME_PATTERN} title={USERNAME_HINT} maxLength={32}
+                inputMode="text" placeholder="e.g. 484470" required autoFocus />
+            </FormField>
             <div className="grid gap-5 sm:grid-cols-2">
-              <FormField label="Username" hint={USERNAME_HINT}>
-                <Input value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} autoComplete="off"
-                  autoCapitalize="none" spellCheck={false} pattern={USERNAME_PATTERN} maxLength={32} required autoFocus />
+              <FormField label="First name">
+                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="off" maxLength={60} required />
               </FormField>
-              <FormField label="Full name" hint="Optional">
-                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={80} />
+              <FormField label="Last name">
+                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" maxLength={60} required />
               </FormField>
             </div>
+            <FormField label="UMindanao email" hint={EMAIL_HINT}>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off"
+                autoCapitalize="none" spellCheck={false} pattern={EMAIL_PATTERN} placeholder={`name@${EMAIL_DOMAIN}`} required />
+            </FormField>
             <FormField label="Password" hint="8-64 characters. Generated passwords are easy to type on a phone.">
               <WifiPasswordInput value={password} onChange={setPassword} />
             </FormField>

@@ -6,8 +6,12 @@ export interface AuthStatus {
 }
 
 export interface WifiUser {
+  /** Student ID / Faculty ID; also the Wi-Fi username. */
   username: string
-  full_name: string
+  first_name: string
+  last_name: string
+  /** UMindanao email; null for accounts imported before emails were collected. */
+  email: string | null
   note: string
   enabled: boolean
   /** Unix seconds; null = never expires. */

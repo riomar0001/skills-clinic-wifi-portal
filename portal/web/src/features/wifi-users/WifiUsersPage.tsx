@@ -22,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { describeExpiry, userStatus } from '@/lib/expiry'
 import { formatDateTime } from '@/lib/format'
+import { fullName } from '@/lib/person'
 import { cn } from '@/lib/utils'
 import { useDeleteWifiUser, useSetWifiEnabled, useWifiUsers } from './api'
 import { CreateWifiUserDialog } from './CreateWifiUserDialog'
@@ -88,7 +89,7 @@ export function WifiUsersPage() {
     <>
       <PageHeader
         title="Wi-Fi users"
-        description="People who can join the Wi-Fi with their own username and password."
+        description="Students and faculty who can join the Wi-Fi with their ID and own password."
         actions={<Button onClick={openNew}><Plus /> Add Wi-Fi user</Button>}
       />
 
@@ -96,7 +97,7 @@ export function WifiUsersPage() {
         <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
           <InputGroup className="sm:max-w-xs">
             <InputGroupAddon><Search /></InputGroupAddon>
-            <InputGroupInput type="search" placeholder="Search name or username" aria-label="Search Wi-Fi users"
+            <InputGroupInput type="search" placeholder="Search name, ID or email" aria-label="Search Wi-Fi users"
               value={search} onChange={(e) => onSearch(e.target.value)} maxLength={64} />
           </InputGroup>
           <Tabs value={status} onValueChange={(v) => updateParams({ status: v === 'all' ? null : v })}>
@@ -122,10 +123,10 @@ export function WifiUsersPage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="pl-4">User</TableHead>
+                <TableHead className="pl-4">Name</TableHead>
+                <TableHead className="hidden md:table-cell">Email</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="hidden sm:table-cell">Expires</TableHead>
-                <TableHead className="hidden lg:table-cell">Note</TableHead>
                 <TableHead className="w-12 pr-4"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
@@ -134,22 +135,22 @@ export function WifiUsersPage() {
                 <TableRow key={u.username} className="cursor-pointer" onClick={() => navigate(`/wifi-users/${encodeURIComponent(u.username)}`)}>
                   <TableCell className="pl-4">
                     <div className="flex items-center gap-3">
-                      <UserAvatar username={u.username} fullName={u.full_name} />
+                      <UserAvatar username={u.username} firstName={u.first_name} lastName={u.last_name} />
                       <div className="grid min-w-0">
                         <Link to={`/wifi-users/${encodeURIComponent(u.username)}`} className="truncate font-medium hover:underline"
                           onClick={(e) => e.stopPropagation()}>
-                          {u.username}
+                          {fullName(u) || 'No name'}
                         </Link>
-                        <span className="truncate text-xs text-muted-foreground">{u.full_name || 'No name'}</span>
+                        <span className="truncate font-mono text-xs text-muted-foreground">{u.username}</span>
                       </div>
                     </div>
                   </TableCell>
+                  <TableCell className="hidden max-w-64 truncate text-muted-foreground md:table-cell">{u.email ?? '—'}</TableCell>
                   <TableCell><StatusBadge status={userStatus(u)} /></TableCell>
                   <TableCell className={cn('hidden sm:table-cell', u.expired ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')}
                     title={u.expires_at === null ? undefined : formatDateTime(u.expires_at)}>
                     {describeExpiry(u.expires_at)}
                   </TableCell>
-                  <TableCell className="hidden max-w-64 truncate text-muted-foreground lg:table-cell">{u.note || '—'}</TableCell>
                   <TableCell className="pr-4" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
