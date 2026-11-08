@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
-import type { Connection, Device, WifiStatusFilter, WifiUser } from '../../api/types'
+import type { Connection, Device, ImportResult, WifiStatusFilter, WifiUser } from '../../api/types'
 
 export const wifiKeys = {
   all: ['wifi-users'] as const,
@@ -117,5 +117,21 @@ export function useDeleteWifiUser() {
       qc.removeQueries({ queryKey: wifiKeys.detail(username) })
       return invalidate()
     },
+  })
+}
+
+export interface ImportRequest {
+  csv: string
+  expires_at: number | null
+  device_limit: number | null
+  dry_run: boolean
+}
+
+/** Check a CSV file (dry_run) or add everyone in it; nothing is added unless every row is valid. */
+export function useImportWifiUsers() {
+  const invalidate = useInvalidateAfterChange()
+  return useMutation({
+    mutationFn: (body: ImportRequest) => api.post<ImportResult>('/api/wifi-users/import', body),
+    onSuccess: (result) => (result.added > 0 ? invalidate() : undefined),
   })
 }

@@ -93,3 +93,20 @@ export interface Dashboard {
   certificate: Certificate | null
   recent_activity: ActivityEntry[]
 }
+
+/** One CSV row as the server read it; password is only set after a real import (shown once). */
+export interface ImportRow {
+  line: number
+  username: string
+  first_name: string
+  last_name: string
+  email: string
+  errors: string[]
+  password: string | null
+}
+
+export interface ImportResult {
+  rows: ImportRow[]
+  error_count: number
+  added: number
+}

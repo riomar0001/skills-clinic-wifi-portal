@@ -13,6 +13,7 @@ const DESCRIPTIONS: Record<string, (target: string) => string> = {
   'wifi.expiry_clear': (t) => `removed the expiry date of ${t}`,
   'wifi.delete': (t) => `deleted Wi-Fi user ${t}`,
   'wifi.import': (t) => `imported ${t} from the old user list`,
+  'wifi.csv_import': (t) => `added ${t} from a CSV file`,
   'wifi.self_password': () => 'changed their own Wi-Fi password',
   'admin.setup': () => 'set up the portal',
   'admin.login': () => 'signed in',

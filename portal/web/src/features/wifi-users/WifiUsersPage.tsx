@@ -1,4 +1,4 @@
-import { Ban, CircleCheck, Eye, MoreHorizontal, Plus, Search, Trash2, Users } from 'lucide-react'
+import { Ban, CircleCheck, Eye, MoreHorizontal, Plus, Search, Trash2, Upload, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import { useDeleteWifiUser, useSetWifiEnabled, useWifiUsers } from './api'
 import { CreateWifiUserDialog } from './CreateWifiUserDialog'
 import { CredentialsDialog, type Credentials } from './CredentialsDialog'
+import { ImportCsvDialog } from './ImportCsvDialog'
 import { UserAvatar } from './UserAvatar'
 
 const FILTERS: { value: WifiStatusFilter; label: string }[] = [
@@ -53,6 +54,7 @@ export function WifiUsersPage() {
   const users = useWifiUsers(debouncedSearch, status)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
   const [toDelete, setToDelete] = useState<WifiUser | null>(null)
+  const [importing, setImporting] = useState(false)
   const setEnabled = useSetWifiEnabled()
   const remove = useDeleteWifiUser()
   const navigate = useNavigate()
@@ -90,7 +92,12 @@ export function WifiUsersPage() {
       <PageHeader
         title="Wi-Fi users"
         description="Students and faculty who can join the Wi-Fi with their ID and own password."
-        actions={<Button onClick={openNew}><Plus /> Add Wi-Fi user</Button>}
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setImporting(true)}><Upload /> Import CSV</Button>
+            <Button onClick={openNew}><Plus /> Add Wi-Fi user</Button>
+          </>
+        }
       />
 
       <Card className="gap-0 overflow-hidden py-0">
@@ -184,6 +191,7 @@ export function WifiUsersPage() {
 
       <CreateWifiUserDialog open={creating} onClose={() => updateParams({ new: null })} onCreated={setCredentials} />
       <CredentialsDialog credentials={credentials} onClose={() => setCredentials(null)} />
+      <ImportCsvDialog open={importing} onClose={() => setImporting(false)} />
       <ConfirmDialog
         open={toDelete !== null}
         onOpenChange={(open) => !open && setToDelete(null)}
