@@ -1,4 +1,4 @@
-# CCE Skills Clinic Wifi Admin Portal
+# CCE Skills Clinic Wifi Admin Portal for TP-Link TL-WR840N
 
 One Wi-Fi login per person. The TP-Link TL-WR840N runs **WPA2-Enterprise**: when someone joins,
 their device asks for a **username and password**, and the router checks it with a login server
