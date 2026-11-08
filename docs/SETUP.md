@@ -245,7 +245,8 @@ you) shows the attempt as **Accepted** under **Recent connections**.
    somewhere safe ([Backups](MAINTENANCE.md#backups)).
 2. Add everyone else ([Using the portal](USING.md#managing-wi-fi-users)).
 3. Share the portal address (`http://192.168.1.101`, or `https://wifi.riomar.dev` after step 11) so
-   students and faculty can use **My Wi-Fi**.
+   students and faculty can use **My Wi-Fi**. People without an account can use **Request Wi-Fi
+   access** on the sign-in page; requests wait for an admin under **Access requests**.
 
 ---
 

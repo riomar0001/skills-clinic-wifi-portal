@@ -177,11 +177,14 @@ account and a Wi-Fi account share the same name (for example your Student ID):
   8-64 plain keyboard characters. Your devices ask for the new password the next time they join.
 - **Same password:** signing in always opens the admin portal. You can still see your Wi-Fi account
   there under **Wi-Fi users**, but not My Wi-Fi.
-- **Different passwords** (only if the Wi-Fi password is reset separately afterwards): the admin
-  password opens the admin portal, the Wi-Fi password opens My Wi-Fi.
+- **Different passwords** (an admin added on the Admins page with its own password, whose Wi-Fi
+  password was then reset separately): the admin password opens the admin portal, the Wi-Fi password
+  opens My Wi-Fi.
 
-The Wi-Fi itself only uses the Wi-Fi account and password. Changing a Wi-Fi password never changes the
-admin password.
+The Wi-Fi itself only uses the Wi-Fi account and password. For an admin added on the Admins page,
+changing the Wi-Fi password never changes the admin password. An admin **promoted** with **Make
+admin** has no admin password of their own: any change to their Wi-Fi password is their admin
+password too ([above](#make-a-wi-fi-user-an-admin)).
 
 ## The Server page
 

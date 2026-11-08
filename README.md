@@ -56,7 +56,7 @@ After that, [docs/USING.md](docs/USING.md) covers day-to-day use and
 sh setup.sh        # Linux
 ```
 
-This creates the certificate (valid until 2036), the router secret and starts both containers.
+This creates the certificate (valid until 2036) and the router secret, and starts the containers.
 It's safe to run again: it never replaces what already exists.
 
 Then open **http://localhost**. The first admin needs the one-time code in
@@ -81,9 +81,11 @@ Then open **http://localhost**. The first admin needs the one-time code in
   unless every row is valid; generated passwords can be downloaded once.
 - **Expiry** is enforced by FreeRADIUS itself: after that moment the login is refused, even if the
   portal is stopped.
-- **Admins:** add and remove admins; change your own password from the user menu.
-- **Server:** certificate details, router settings, the **router secret** (asks for your password
-  again), and a database **backup** download.
+- **Admins:** add and remove admins; change your own password from the user menu. **Make admin**
+  on a Wi-Fi user's page promotes them: they sign in with their ID and Wi-Fi password
+  ([details](docs/USING.md#make-a-wi-fi-user-an-admin)).
+- **Server:** certificate details, router settings, the **router secret** and a database **backup**
+  download (both ask for your password again).
 - **Activity:** who changed what.
 
 IDs are lowercase. Phones often capitalise the first letter, so tell people to type it in
@@ -119,6 +121,10 @@ In `http://192.168.1.1`:
    - RADIUS Server Password: the router secret (portal → Server → **Show secret**)
    - Save. Everyone on the Wi-Fi must rejoin with their own username and password.
 
+Before saving, name the network **CCE Skills Clinic WiFi** (Wireless → Wireless Settings; the QR
+codes use it) and add yourself as a Wi-Fi user, or nobody can join. Full order:
+[docs/SETUP.md, steps 8 to 10](docs/SETUP.md#8-add-yourself-as-a-wi-fi-user).
+
 **Keep the server's address fixed.** In the router's **DHCP → Address Reservation**, reserve
 **192.168.1.101** for the server's Ethernet MAC (`XX-XX-XX-XX-XX-XX`, from `ipconfig /all`).
 
@@ -137,7 +143,10 @@ devices. Mesh systems and ISP modems often lack Enterprise mode. See
 - **iPhone / iPad / Mac:** username and password, then tap **Trust**.
 - **Windows:** username and password, then **Connect** at the certificate prompt.
 - **Android 13+:** EAP **PEAP**, Phase 2 **MSCHAPV2**, CA certificate **Trust on first use**,
-  identity = username. Domain, if asked: `wifi.skillsclinic.local`.
+  identity = username. Domain, if asked: `wifi.skillsclinic.local`. With the Let's Encrypt
+  certificate: CA certificate **Use system certificates**, domain **wifi.riomar.dev**.
+- **Any phone:** the **Join with a QR code** card on a user's page or My Wi-Fi fills in the network
+  and ID (many Android phones; iPhones join from Settings → Wi-Fi).
 - **Older Android:** choose **Don't validate**, or install `ca.der` (portal → Server) first.
 
 ### The certificate warning
@@ -156,8 +165,9 @@ Setup: [docs/SETUP.md, step 11](docs/SETUP.md#11-optional-a-publicly-trusted-cer
 
 | Path | What it is |
 |---|---|
-| `setup.ps1` | One-time setup; safe to re-run. |
-| `compose.yaml` | Both containers. |
+| `docs/` | [Setup](docs/SETUP.md), [Using the portal](docs/USING.md), [Maintenance](docs/MAINTENANCE.md). |
+| `setup.ps1`, `setup.sh` | One-time setup (Windows, Linux); safe to re-run. |
+| `compose.yaml` | All the containers; `wifi-tunnel` only runs with `--profile tunnel` (setup adds it when `tunnel/token` exists). |
 | `Dockerfile`, `start.sh`, `reload-users.sh` | FreeRADIUS image; reloads users when `data/users` changes. |
 | `wifi-events.conf` | Makes FreeRADIUS record each login attempt for the connection history. |
 | `portal/backend` | FastAPI + SQLAlchemy + Alembic, managed with **uv**. |
@@ -177,9 +187,10 @@ Back up the `data` folder and the portal database (portal → Server → Downloa
 ## Maintenance
 
 ```powershell
-docker compose ps                          # both should be "Up"
+docker compose ps                          # every container should be "Up"
 docker compose logs portal --tail 50
 .\setup.ps1                                # rebuild and restart, keeps all data
+docker compose --profile tunnel restart    # restart everything, including the tunnel
 ```
 
 Forgot the admin password:
@@ -205,4 +216,5 @@ cd portal\backend; uv sync; uv run pytest            # API tests
 $env:PORTAL_DB_PATH="$PWD\dev.db"; $env:RADIUS_DATA_DIR="..\..\data"; $env:PORTAL_STATIC_DIR=""
 uv run uvicorn --factory app.main:create_app --port 8000
 cd portal\web; npm install; npm run dev               # UI on http://localhost:5173, /api goes to :8000
+cd fallback; npm install; npm test                    # offline-page Worker tests
 ```

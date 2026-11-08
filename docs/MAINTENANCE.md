@@ -12,9 +12,13 @@ address or router, security and troubleshooting. Run commands in the project fol
 | Login server log | `docker compose logs radius --tail 50` |
 | Certificate log (setup step 11) | `docker compose logs certs --tail 50` |
 | Tunnel log (setup step 12) | `docker compose logs tunnel --tail 50` |
-| Restart everything | `docker compose restart` |
-| Stop everything | `docker compose stop` |
-| Start again | `docker compose start` (or run setup again) |
+| Restart everything | `docker compose --profile tunnel restart` |
+| Stop everything | `docker compose --profile tunnel stop` |
+| Start again | `docker compose --profile tunnel start` (or run setup again) |
+| Clear every wrong-password lock | `docker compose restart portal` |
+
+`--profile tunnel` includes the optional `wifi-tunnel` container (setup step 12): without it, `stop`,
+`restart` and `down` silently skip that container. It does no harm when you don't use the tunnel.
 
 **The server must stay on with Docker running.** If it's off, nobody new can join the Wi-Fi; devices
 already connected stay connected.
@@ -26,7 +30,12 @@ git pull
 ```
 
 Then run setup again (`.\setup.ps1` or `sh setup.sh`). It rebuilds the containers and keeps all data,
-the certificate and the router secret.
+the certificate and the router secret. Database changes a new version needs are applied by the portal
+itself when it starts.
+
+If the update changed anything in `fallback/` (the offline page, setup step 12), deploy it again from
+any computer with Node.js: `cd fallback`, `npm install`, `npm test`, `npm run deploy`. The same applies
+after you edit its message.
 
 ## Backups
 
@@ -153,6 +162,9 @@ Also delete the token in Cloudflare (**API Tokens → … → Delete**).
   passwords, and keep the tunnel's service at `http://proxy:8081`. The **tunnel token**
   (`tunnel/token`) lets anyone run your tunnel: if it leaks, delete the tunnel in Cloudflare and make a
   new one.
+- **Admins promoted from Wi-Fi users** sign in with their Wi-Fi password, which can be as short as
+  8 characters, and it's stored as an NT hash, which is fast to crack if a backup leaks. For people
+  who manage the portal often, prefer a separate admin account with a long password.
 - **Access requests** come from a public form, so anyone who can open the portal can send one. They
   grant nothing until an admin approves, so check the name and ID before approving. The form is
   limited to 60 requests per address per 10 minutes and 300 waiting requests in total.
@@ -185,6 +197,10 @@ Also delete the token in Cloudflare (**API Tokens → … → Delete**).
 | Phones can't open the portal | Firewall (setup step 7), and use the server's address, not `localhost`. If the server is behind the router, the phone must be on the router's network. |
 | Nobody can join the Wi-Fi | Portal dashboard → **Login server** must say *Running*. The router's RADIUS IP, port 1812 and secret must match (setup step 9). Did the server's address change? See [Changing the server's address](#changing-the-servers-address). |
 | One person can't join | Their page: enabled, not expired, password correct, device limit not reached? **Recent connections** shows whether the login server saw the attempt and refused it. |
+| "Too many wrong passwords. Try again in N minutes." | Someone (maybe an attacker, through the tunnel) typed a wrong password for that name 5 times from one address or 20 times from anywhere. Wait, or run `docker compose restart portal` to clear every lock. |
+| A promoted admin can't sign in | Their Wi-Fi account must be enabled, not expired and still have the same ID. If it was renamed or deleted, remove them on **Admins** and promote them again (or `reset-admin` gives the admin account its own password). |
+| Request access says the ID already has access | That ID or email already has an account. They should sign in, or an admin resets their password. |
+| Access request sign-in says it's still waiting | An admin hasn't approved it yet: **Access requests** in the sidebar. Unanswered requests are removed after 30 days. |
 | Wrong ID typed on a phone | IDs are lowercase; phones often capitalise the first letter. |
 | Certificate: "Not set up" | `letsencrypt/cloudflare.ini` or `letsencrypt/domain` is missing or empty. Check it isn't saved as `.ini.txt`. |
 | Certificate: Cloudflare authentication or "zone" error | The token is wrong, expired, or not allowed to edit DNS for that domain. Make a new one (setup step 11a). |
@@ -193,4 +209,5 @@ Also delete the token in Cloudflare (**API Tokens → … → Delete**).
 | Offline page, but the server is on | `docker compose ps` shows `wifi-tunnel` Up? `docker compose logs tunnel` should show `Registered tunnel connection`; a token error means `tunnel/token` is wrong. The server needs internet access. |
 | Cloudflare "Error 1033" instead of the offline page | The tunnel is down and the Worker isn't deployed, or its route doesn't match the name (setup step 12c). |
 | "Too many redirects" through the tunnel | The tunnel's service URL is `http://proxy:80`; change it to `http://proxy:8081` (setup step 12b). |
+| Download backup says the password is wrong | Use your own admin password. Promoted admins use their Wi-Fi password. Wrong tries count toward the lock. |
 | Need the full login server trace | `docker compose stop radius`, then `docker run --rm -p 1812:1812/udp -v "$PWD/data:/mnt/local:ro" wifi-radius sh -c "sed 's/freeradius -f/freeradius -X/' /start.sh > /tmp/s && sh /tmp/s"`, try a login, Ctrl+C, `docker compose start radius`. |
