@@ -72,6 +72,10 @@ Then open **http://localhost**. The first admin needs the one-time code in
   network **CCE Skills Clinic WiFi** and their ID when scanned; they type the password.
 - **Device limit:** each account can be limited to a number of devices (default 2). The first ones
   to join are registered; others are refused until an admin removes one.
+- **Access requests:** people without an account use **Request Wi-Fi access** on the sign-in page
+  with their ID, name, UMindanao email and the password they want. An admin approves (choosing
+  expiry and device limit) or rejects; only the password's hash is ever stored
+  ([details](docs/USING.md#access-requests)).
 - **Import CSV:** add a whole class list at once. The file is checked first and nobody is added
   unless every row is valid; generated passwords can be downloaded once.
 - **Expiry** is enforced by FreeRADIUS itself: after that moment the login is refused, even if the

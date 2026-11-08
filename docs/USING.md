@@ -46,6 +46,22 @@ docker exec -it wifi-portal python -m app.cli add-wifi-user --id 123456 --first 
 5. **Add N users**, then **Download passwords (CSV)**. The passwords are shown only this once; share
    each one with its owner only, and delete the downloaded file when done.
 
+### Access requests
+
+People without an account can ask for one: **Request Wi-Fi access** on the sign-in page. They
+enter their Student/Faculty ID, name, UMindanao email and the **Wi-Fi password they want**.
+Nothing is granted until an admin approves.
+
+1. New requests show as a number next to **Access requests** in the sidebar, and on the dashboard.
+2. **Access requests → Approve**: choose the **expiry** and **device limit**, then **Approve**. The
+   account is created with the password they chose; nobody else ever sees it. They can join the
+   Wi-Fi and sign in to My Wi-Fi right away.
+3. Or **Reject**. They can send a new request.
+
+While a request waits, signing in with the requested password says it's waiting for an admin.
+Unanswered requests are removed after 30 days. Requests for an ID or email that already has an
+account are refused, so people can't take over someone's account this way.
+
 ### Change someone's account
 
 Open **Wi-Fi users**, search by name, ID or email, and click the person. On their page:

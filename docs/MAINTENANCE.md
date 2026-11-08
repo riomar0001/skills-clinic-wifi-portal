@@ -152,6 +152,9 @@ Also delete the token in Cloudflare (**API Tokens → … → Delete**).
   passwords, and keep the tunnel's service at `http://proxy:8081`. The **tunnel token**
   (`tunnel/token`) lets anyone run your tunnel: if it leaks, delete the tunnel in Cloudflare and make a
   new one.
+- **Access requests** come from a public form, so anyone who can open the portal can send one. They
+  grant nothing until an admin approves, so check the name and ID before approving. The form is
+  limited to 60 requests per address per 10 minutes and 300 waiting requests in total.
 - **Wrong passwords:** 5 in a row lock that name from that address for 5 minutes. On Docker Desktop
   for Windows every visitor on the network looks like the same address, so the lock applies to the
   name for everyone; on a Linux server it's per device. Through the tunnel it's per public address.
