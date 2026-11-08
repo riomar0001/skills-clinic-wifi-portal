@@ -41,6 +41,15 @@ def test_login_logout_and_throttle(client, settings):
     assert client.get("/api/wifi-users").status_code == 200
 
 
+def test_session_cookie_is_secure_only_over_https(client, settings):
+    setup_admin(client, settings)
+    https = TestClient(client.app, headers=PORTAL_HEADERS, base_url="https://testserver")
+    r = https.post("/api/auth/login", json={"username": "boss", "password": "correct-horse-1"})
+    assert r.status_code == 200 and "secure" in r.headers["set-cookie"].lower()
+    r = client.post("/api/auth/login", json={"username": "boss", "password": "correct-horse-1"})
+    assert r.status_code == 200 and "secure" not in r.headers["set-cookie"].lower()
+
+
 def test_sessions_survive_restart(settings):
     with TestClient(create_app(settings), headers=PORTAL_HEADERS) as c:
         setup_admin(c, settings)

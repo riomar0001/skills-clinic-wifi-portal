@@ -62,10 +62,13 @@ docker compose --project-directory $PSScriptRoot up -d --build
 Write-Host ''
 Write-Host 'Running:'
 Write-Host '  Login server      UDP 1812 (for the router)'
-Write-Host '  Portal            http://<this PC>  (one sign-in for admins and Wi-Fi users)'
-if (Test-Path (Join-Path $letsencrypt 'cloudflare.ini')) {
+$domainFile = Join-Path $letsencrypt 'domain'
+if ((Test-Path (Join-Path $letsencrypt 'cloudflare.ini')) -and (Test-Path $domainFile)) {
+    $domain = (Get-Content $domainFile -TotalCount 1).Trim().ToLower()
+    Write-Host "  Portal            https://$domain  (once the certificate is issued; http://<this PC> until then)"
     Write-Host '  Certificate       Let''s Encrypt, renewed automatically (docker logs wifi-certs)'
 } else {
+    Write-Host '  Portal            http://<this PC>  (one sign-in for admins and Wi-Fi users)'
     Write-Host '  Certificate       self-made (for a publicly trusted one, see docs/SETUP.md)'
 }
 
@@ -73,8 +76,9 @@ if (Test-Path (Join-Path $letsencrypt 'cloudflare.ini')) {
 $setupCode = Join-Path $data 'setup-code.txt'
 for ($i = 0; $i -lt 30 -and -not (Test-Path $setupCode); $i++) {
     try {
-        $status = Invoke-RestMethod http://localhost/api/auth/status -TimeoutSec 2
-        if (-not $status.needs_setup) { return }  # an admin already exists
+        # Asked inside the container: the proxy may redirect to an HTTPS name this PC can't resolve yet.
+        $status = docker exec wifi-portal python -c "import urllib.request as u; print(u.urlopen('http://127.0.0.1:8080/api/auth/status', timeout=2).read().decode())" 2>$null | ConvertFrom-Json
+        if ($status -and -not $status.needs_setup) { return }  # an admin already exists
     } catch {
         # Portal still starting; keep waiting.
     }

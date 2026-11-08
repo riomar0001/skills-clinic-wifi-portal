@@ -67,17 +67,21 @@ docker compose up -d --build
 echo
 echo 'Running:'
 echo '  Login server   UDP 1812 (for the router)'
-echo '  Portal         http://<this machine>  (one sign-in for admins and Wi-Fi users)'
-if [ -e letsencrypt/cloudflare.ini ]; then
+if [ -e letsencrypt/cloudflare.ini ] && [ -e letsencrypt/domain ]; then
+    domain=$(head -n 1 letsencrypt/domain | tr -d ' \r\n' | tr 'A-Z' 'a-z')
+    echo "  Portal         https://$domain  (once the certificate is issued; http://<this machine> until then)"
     echo "  Certificate    Let's Encrypt, renewed automatically (docker logs wifi-certs)"
 else
+    echo '  Portal         http://<this machine>  (one sign-in for admins and Wi-Fi users)'
     echo '  Certificate    self-made (for a publicly trusted one, see docs/SETUP.md)'
 fi
 
 # The portal writes the first-admin setup code a few seconds after it starts.
 i=0
 while [ $i -lt 30 ] && [ ! -e "$data/setup-code.txt" ]; do
-    if curl -fs http://localhost/api/auth/status 2>/dev/null | grep -q '"needs_setup":false'; then
+    # Asked inside the container: the proxy may redirect to an HTTPS name this machine can't resolve yet.
+    if docker exec wifi-portal python -c "import urllib.request as u; print(u.urlopen('http://127.0.0.1:8080/api/auth/status', timeout=2).read().decode())" 2>/dev/null \
+        | grep -q '"needs_setup":false'; then
         exit 0  # an admin already exists
     fi
     i=$((i + 1))

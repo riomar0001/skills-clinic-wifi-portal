@@ -10,6 +10,9 @@ When you're done you'll have:
   password are right.
 - **wifi-portal**: the website at `http://<server>`. Admins manage Wi-Fi users there, and
   students and faculty sign in to **My Wi-Fi** on the same page.
+- **wifi-proxy**: the portal's front door on ports 80 and 443. It serves HTTPS once you add a
+  Let's Encrypt certificate (step 12).
+- **wifi-certs**: optional; gets and renews that certificate. Does nothing until step 12.
 
 ---
 
@@ -85,7 +88,7 @@ Check that both are up:
 docker compose ps
 ```
 
-Both `wifi-radius` and `wifi-portal` should say **Up**.
+`wifi-radius`, `wifi-portal`, `wifi-proxy` and `wifi-certs` should all say **Up**.
 
 ## 5. Create the first admin
 
@@ -158,7 +161,7 @@ The server needs these open:
 | Port | From | Why |
 |---|---|---|
 | UDP **1812** | The TP-Link router | Wi-Fi logins |
-| TCP **80** | The network | The portal (admins and Wi-Fi users) |
+| TCP **80** and **443** | The network | The portal (admins and Wi-Fi users); 443 once it has HTTPS (step 12) |
 
 - **Windows:** Docker Desktop adds its own firewall rules when it starts. If a phone on the Wi-Fi
   can't open `http://<server>`, allow Docker Desktop in **Windows Security → Firewall → Allow
@@ -277,10 +280,13 @@ certificates** and no warning. iPhones, Macs and Windows still ask once: an iPho
 **Not Trusted** for every Wi-Fi certificate it hasn't seen, even a Let's Encrypt one. That's normal;
 tap **Trust** if it shows your name (e.g. `wifi.riomar.dev`) issued by Let's Encrypt (`R…` or `YR…`).
 
+The same certificate also gives the **portal HTTPS**: `https://wifi.riomar.dev` instead of
+`http://<server>`, so sign-ins are encrypted on the wired network too.
+
 You need a domain whose DNS is on **Cloudflare** (this install uses `riomar.dev`). The server does
-**not** need to be reachable from the internet, and you **don't** create a DNS record for the name:
-the `wifi-certs` container proves you own the domain by adding a temporary TXT record through
-Cloudflare's API, then removes it. Phones never look the name up; it only has to match the certificate.
+**not** need to be reachable from the internet: the `wifi-certs` container proves you own the domain
+by adding a temporary TXT record through Cloudflare's API, then removes it. The Wi-Fi login itself
+never looks the name up; only the portal's HTTPS address needs a DNS record (step b).
 
 **Trade-off:** the certificate is renewed automatically about every two months. Android (system
 certificates + domain) doesn't notice, but iPhones, Macs and Windows may ask to **Trust** again after
@@ -309,6 +315,18 @@ In the project folder's `letsencrypt` folder (setup creates it; Git ignores it),
 In Notepad use **Save as type: All files (\*.\*)**, or the file ends up as `cloudflare.ini.txt`.
 On Linux, `chmod 600 letsencrypt/cloudflare.ini`.
 
+**Add the DNS record before step c.** Once the certificate exists, every `http://` visit to the portal,
+even by IP address, is redirected to `https://<the name>`, so the name must lead to the server.
+In Cloudflare: your domain → **DNS → Records → Add record**:
+
+| Type | Name | IPv4 address | Proxy status |
+|---|---|---|---|
+| `A` | `wifi` | the server's fixed address, e.g. `192.168.0.60` | **DNS only** (grey cloud) |
+
+It must be **DNS only**: Cloudflare's proxy can't reach a private address. The record only works on
+your own network, and it reveals nothing beyond that private address. Check it from the server:
+`nslookup wifi.riomar.dev 1.1.1.1` should answer `192.168.0.60`.
+
 ### c. Test, then turn it on
 
 1. Test the token and name without getting a real certificate:
@@ -325,12 +343,16 @@ On Linux, `chmod 600 letsencrypt/cloudflare.ini`.
    The login server restarts by itself to use it (a few seconds; connected devices stay on).
 3. Portal → **Server** shows the certificate as **publicly trusted**, and the joining instructions
    shown after adding a Wi-Fi user switch to the new Android settings.
-4. Devices that joined before must **forget the network and join again**, because the certificate
+4. The portal is now `https://wifi.riomar.dev` (padlock in the browser). `http://<server>` redirects
+   there, so old bookmarks keep working. Share the new address with your users.
+5. Devices that joined before must **forget the network and join again**, because the certificate
    changed. On Android: EAP **PEAP**, Phase 2 **MSCHAPV2**, CA certificate **Use system
    certificates**, Domain **wifi.riomar.dev**, Identity = ID.
 
 `wifi-certs` checks twice a day and renews in the certificate's last 30 days. A failed attempt is
-retried after an hour, and the current certificate stays in use meanwhile.
+retried after an hour, and the current certificate stays in use meanwhile. The login server and
+`wifi-proxy` pick up a renewed certificate by themselves. If the certificate is ever removed or
+expires, the portal goes back to plain `http://<server>` on its own.
 
 ### Turn it off
 
@@ -340,6 +362,7 @@ docker compose stop certs
 
 Then delete `letsencrypt/cloudflare.ini` and the files in `data/letsencrypt/`. The login server
 switches back to the self-made certificate by itself, and devices must forget the network and rejoin.
+The portal goes back to `http://<server>` within about 10 seconds; you can then delete the DNS record.
 Also delete the token in Cloudflare (**API Tokens → … → Delete**).
 
 ---
@@ -394,16 +417,17 @@ login server's user list from the restored database when it starts.
 
 ## Security notes
 
-- **The portal uses plain HTTP.** On the Wi-Fi, each person's traffic is encrypted by WPA2-Enterprise,
-  but on the wired network a sign-in could be read by someone sniffing it. Keep the server on a
-  network only staff can plug into, and don't publish port 80 to the internet.
+- **The portal uses plain HTTP unless step 12 is done.** On the Wi-Fi, each person's traffic is
+  encrypted by WPA2-Enterprise, but on the wired network a sign-in could be read by someone sniffing
+  it. With step 12, the portal is HTTPS-only. Either way, don't publish ports 80/443 to the internet,
+  and never publish the portal container's own port 8080: it trusts the proxy's visitor-address headers.
 - **Wrong passwords:** 5 in a row lock that name from that device for 5 minutes. On Docker Desktop
   for Windows every visitor looks like the same address, so the lock applies to the name for
   everyone; on a Linux server it's per device.
 - **Windows firewall:** Docker Desktop's rule ("Docker Desktop Backend") allows any port on networks
-  set to **Public**, but only the ports Docker publishes (80 and 1812 here) are listening, so
+  set to **Public**, but only the ports Docker publishes (80, 443 and 1812 here) are listening, so
   that's all it exposes. If you switch the server's network to **Private**, that rule no longer
-  applies: add inbound rules for TCP 80 and UDP 1812, or logins and the portal stop working.
+  applies: add inbound rules for TCP 80, TCP 443 and UDP 1812, or logins and the portal stop working.
 - **Router:** change the TP-Link's admin password from the default, keep WPS off, and keep the
   router secret private: anyone with it could ask the login server to check passwords.
 - **Backups and the `data` folder** contain password hashes and the certificate's private key.

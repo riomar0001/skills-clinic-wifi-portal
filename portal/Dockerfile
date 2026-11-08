@@ -35,7 +35,9 @@ RUN useradd --uid 1000 --no-create-home --shell /usr/sbin/nologin portal \
  && chown portal:portal /var/lib/portal
 USER portal
 
-# One port for admins and Wi-Fi users.
+# One port for admins and Wi-Fi users, reached only through the proxy container (compose.yaml),
+# which replaces X-Forwarded-For/-Proto; so the visitor's address and https are trusted from it.
 EXPOSE 8080
 CMD ["uvicorn", "--factory", "app.main:create_app", "--host", "0.0.0.0", "--port", "8080", \
-     "--no-server-header", "--no-proxy-headers", "--timeout-keep-alive", "5", "--limit-concurrency", "100"]
+     "--no-server-header", "--proxy-headers", "--forwarded-allow-ips", "*", \
+     "--timeout-keep-alive", "5", "--limit-concurrency", "100"]

@@ -20,9 +20,8 @@ services:
     restart: unless-stopped
     depends_on:
       - radius
-    ports:
-      # Open to the network so Wi-Fi users can reach their portal; admins sign in on the same page.
-      - "80:8080"  # this PC's port 80 (plain http://<server>) to the portal's 8080 inside
+    # No published port: only the proxy below reaches it. The portal trusts the proxy's
+    # X-Forwarded-For/-Proto headers, so never publish 8080 directly.
     environment:
       RADIUS_HOST: radius
     volumes:
@@ -30,6 +29,21 @@ services:
       - radius-events:/mnt/radius-events:ro
       # SQLite lives in a Docker volume: file locking on Windows folder mounts isn't reliable.
       - portal-db:/var/lib/portal
+
+  # Front door for the portal, open to the network so Wi-Fi users reach it; admins use the same page.
+  # HTTPS with the Let's Encrypt certificate when there is one (port 80 redirects), else plain HTTP on 80.
+  proxy:
+    build: ./proxy
+    image: wifi-proxy
+    container_name: wifi-proxy
+    restart: unless-stopped
+    depends_on:
+      - portal
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./data/letsencrypt:/mnt/letsencrypt:ro
 
   # Optional publicly trusted certificate (Let's Encrypt via Cloudflare DNS). Waits, doing nothing,
   # until letsencrypt/cloudflare.ini and letsencrypt/domain exist. See docs/SETUP.md.

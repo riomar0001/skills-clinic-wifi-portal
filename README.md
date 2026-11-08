@@ -7,7 +7,8 @@ their device asks for a **username and password**, and the router checks it with
 ```
 phone ──Wi-Fi──> TL-WR840N ──WAN port──> modem (192.168.0.1) <──Ethernet── server PC (192.168.0.60)
                  192.168.0.83    "is ana / ****** ok?" ──UDP 1812──>  wifi-radius   (FreeRADIUS)
-                                                                       wifi-portal   (portal, :80)
+                                                                       wifi-proxy    (:80, :443)
+                                                                        └ wifi-portal (portal)
 ```
 
 **The server must stay on with Docker running.** If it is off, nobody new can join the Wi-Fi.
@@ -18,7 +19,9 @@ Devices already connected stay connected.
 | Container | Port | Who uses it |
 |---|---|---|
 | `wifi-radius` | UDP **1812** | The router, to check logins. Also records every login attempt. |
-| `wifi-portal` | **80** (HTTP), the network | Everyone: `http://<server>` (e.g. `http://192.168.0.60`). One sign-in page: admins land in the admin portal, students and faculty in **My Wi-Fi**. |
+| `wifi-portal` | none (behind `wifi-proxy`) | Everyone: `http://<server>` (e.g. `http://192.168.0.60`), or `https://wifi.riomar.dev` with Let's Encrypt. One sign-in page: admins land in the admin portal, students and faculty in **My Wi-Fi**. |
+| `wifi-proxy` | TCP **80**, **443**, the network | Front door for the portal. HTTPS with the Let's Encrypt certificate when there is one (port 80 then redirects); plain HTTP on 80 otherwise. |
+| `wifi-certs` | none | Optional: gets and renews the Let's Encrypt certificate ([docs/SETUP.md, step 12](docs/SETUP.md#12-optional-a-publicly-trusted-certificate-lets-encrypt)). |
 
 The portal keeps admins, Wi-Fi users, sessions, login history and an activity log in **SQLite**
 (Docker volume `portal-db`). It writes `data/users` for FreeRADIUS, which reloads within a few
@@ -132,6 +135,7 @@ Setup: [docs/SETUP.md, step 12](docs/SETUP.md#12-optional-a-publicly-trusted-cer
 | `data/clients.conf` | Router secret. Private. |
 | `data/certs/` | Certificate and keys. **Don't delete**, or every device must trust a new one. |
 | `certs/` | Optional Let's Encrypt container (`wifi-certs`). |
+| `proxy/` | nginx front for the portal (`wifi-proxy`): HTTPS when there's a Let's Encrypt certificate. |
 | `letsencrypt/` | Cloudflare token and domain for it. Private; not in Git. |
 | `data/letsencrypt/` | The Let's Encrypt certificate, when there is one. Used instead of `data/certs/server.pem`. |
 | `data/users` | Generated from the portal database. Don't edit by hand. |
