@@ -59,8 +59,19 @@ Write-Host ''
 Write-Host 'Running:'
 Write-Host '  Login server      UDP 1812 (for the router)'
 Write-Host '  Portal            http://<this PC>:8080  (one sign-in for admins and Wi-Fi users)'
+
+# The portal writes the first-admin setup code a few seconds after it starts.
 $setupCode = Join-Path $data 'setup-code.txt'
+for ($i = 0; $i -lt 30 -and -not (Test-Path $setupCode); $i++) {
+    try {
+        $status = Invoke-RestMethod http://localhost:8080/api/auth/status -TimeoutSec 2
+        if (-not $status.needs_setup) { return }  # an admin already exists
+    } catch {
+        # Portal still starting; keep waiting.
+    }
+    Start-Sleep 1
+}
 if (Test-Path $setupCode) {
     Write-Host ''
-    Write-Host "First time? Open the admin portal and use the setup code in $setupCode"
+    Write-Host "First time? Open http://localhost:8080 and enter this setup code: $((Get-Content $setupCode -Raw).Trim())"
 }
