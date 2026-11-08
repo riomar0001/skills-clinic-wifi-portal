@@ -65,6 +65,15 @@ def check_admin_password(password: str) -> str:
     return password
 
 
+# No look-alike characters (0/O, 1/l/I), so a password read off a list is typed correctly.
+_EASY_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
+
+
+def generate_wifi_password() -> str:
+    """Easy-to-type random password like "kp7r-m2xw-9qfa" (about 59 bits), same style as the UI's."""
+    return "-".join("".join(secrets.choice(_EASY_ALPHABET) for _ in range(4)) for _ in range(3))
+
+
 def nt_hash(password: str) -> str:
     """What PEAP/MSCHAPv2 checks against: MD4 of the UTF-16LE password, uppercase hex."""
     check_wifi_password(password)

@@ -93,6 +93,29 @@ class PasswordIn(_In):
     password: str = Field(max_length=200)
 
 
+class WifiUserImportIn(_In):
+    csv: str = Field(max_length=1_000_000)
+    expires_at: Expiry | None = None  # applied to every imported user
+    device_limit: DeviceLimit | None = None
+    dry_run: bool = True  # True = only check the file; False = add everyone if every row is valid
+
+
+class ImportRowOut(_Out):
+    line: int
+    username: str
+    first_name: str
+    last_name: str
+    email: str
+    errors: list[str]
+    password: str | None = None  # only after a real import, shown once
+
+
+class WifiUserImportOut(BaseModel):
+    rows: list[ImportRowOut]
+    error_count: int  # rows with at least one problem
+    added: int
+
+
 # ----- Wi-Fi user's own portal -----
 
 class MeOut(_Out):

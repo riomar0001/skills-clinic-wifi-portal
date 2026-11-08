@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Path, Query, Request
 
 from app.api.deps import CurrentAdminDep, DbDep, SettingsDep, WifiServiceDep
-from app.api.schemas import (ConnectionOut, DeviceOut, PasswordIn, StatusFilter, WifiUserCreateIn, WifiUserOut,
-                             WifiUserUpdateIn)
+from app.api.schemas import (ConnectionOut, DeviceOut, ImportRowOut, PasswordIn, StatusFilter, WifiUserCreateIn,
+                             WifiUserImportIn, WifiUserImportOut, WifiUserOut, WifiUserUpdateIn)
 from app.core.passwords import USERNAME_PATTERN
+from app.services import csv_import
 from app.services.connection_log import ConnectionLogService
 from app.services.wifi_users import UNSET
 
@@ -25,6 +26,19 @@ def create_user(body: WifiUserCreateIn, current: CurrentAdminDep, service: WifiS
     return service.create(current.admin.username, body.username, body.password, first_name=body.first_name,
                           last_name=body.last_name, email=body.email, note=body.note, expires_at=body.expires_at,
                           device_limit=body.device_limit)
+
+
+@router.post("/import", response_model=WifiUserImportOut)
+def import_users(body: WifiUserImportIn, current: CurrentAdminDep, db: DbDep, request: Request):
+    rows, added = csv_import.import_users(db, request.app.state.exporter, current.admin.username, body.csv,
+                                          expires_at=body.expires_at, device_limit=body.device_limit,
+                                          commit=not body.dry_run)
+    return WifiUserImportOut(
+        rows=[ImportRowOut(line=r.line, username=r.username, first_name=r.first_name, last_name=r.last_name,
+                           email=r.email, errors=r.errors, password=r.password if added else None) for r in rows],
+        error_count=sum(1 for r in rows if r.errors),
+        added=added,
+    )
 
 
 @router.get("/{username}", response_model=WifiUserOut)

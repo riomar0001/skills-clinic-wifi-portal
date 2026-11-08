@@ -20,6 +20,10 @@ SECURITY_HEADERS = {
 }
 
 
+# The few endpoints that take files get a bigger cap than the global one (exact path match only).
+LARGE_BODY_PATHS = {"/api/wifi-users/import": 2 * 1024 * 1024}  # 1 MB of CSV, JSON-escaped
+
+
 def _deny(status: int, message: str) -> JSONResponse:
     return JSONResponse({"detail": message}, status_code=status)
 
@@ -59,7 +63,8 @@ class GuardMiddleware(BaseHTTPMiddleware):
             if request.headers.get("transfer-encoding"):
                 return _deny(411, "Content-Length required.")
             return None
-        if not length.isdigit() or int(length) > self.max_body_bytes:
+        limit = LARGE_BODY_PATHS.get(request.url.path, self.max_body_bytes)
+        if not length.isdigit() or int(length) > limit:
             return _deny(413, "Request too large.")
         return None
 
