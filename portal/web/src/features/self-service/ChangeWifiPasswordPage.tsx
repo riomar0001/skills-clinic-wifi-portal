@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { CircleAlert, CircleCheck, TriangleAlert, Wifi } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { api, errorMessage } from '@/api/client'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { FormField } from '@/components/common/FormField'
@@ -28,6 +28,15 @@ export function ChangeWifiPasswordPage() {
   const change = useMutation({
     mutationFn: (body: ChangeRequest) => api.post<void>('/api/self-service/password', body),
   })
+
+  // Wi-Fi users shouldn't see "Admin Portal" in their tab.
+  useEffect(() => {
+    const previous = document.title
+    document.title = 'Change Wi-Fi password · CCE Skills Clinic'
+    return () => {
+      document.title = previous
+    }
+  }, [])
 
   const review = (e: FormEvent) => {
     e.preventDefault()
