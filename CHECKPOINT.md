@@ -10,45 +10,34 @@ Branch `wip/wifi-user-portal`. `main` is the version running on the server.
   the disconnect warning; never forced on first connect).
 - Admins see each Wi-Fi user's connection history on the user's page.
 
-## Done on this branch (not yet tested together)
+## Done on this branch
 
-- FreeRADIUS logs every login attempt from the PEAP inner tunnel: `wifi-events.conf`, Dockerfile
-  sed into `inner-tunnel`, `start.sh` creates `/var/log/wifi-events/auth.log` and caps it at 10 MB.
-  `freeradius -XC` passes.
-- `compose.yaml`: shared `radius-events` volume (rw in radius, ro in portal); portal on `8080:8080`.
-- Models + migration `0004`: `connection_events`, `wifi_user_sessions` (round-trips cleanly).
-- `services/connection_log.py`: incremental import with offset in `meta`, strict line parsing,
-  90 days / 50k rows kept.
-- `services/auth.py`: `login()` returns `(token, Identity)`; checks admin, then Wi-Fi user;
-  `identify()`, `resolve_wifi_user()`, `logout()` clears both session kinds.
-- `services/wifi_users.py`: `change_own_password(user, current, new, throttle, keep_token_hash)`,
-  `update_own_details(user, ...)`.
-- `config.py`: `radius_events_file`; removed `admin_port` / `self_service_port`.
+- FreeRADIUS logs every login attempt from the PEAP inner tunnel (`wifi-events.conf`, Dockerfile,
+  `start.sh`); `freeradius -XC` passes. Shared `radius-events` volume in `compose.yaml`; portal on
+  `8080:8080` for the network.
+- Migration `0004` (`connection_events`, `wifi_user_sessions`), `services/connection_log.py`.
+- Shared sign-in (admin first, then Wi-Fi user), `/api/auth/status` reports `role`, `/api/me`
+  (details, password, connections), admin `GET /api/wifi-users/{id}/connections`.
+  Removed 8081, `serve.py` and the self-service endpoint. **51 backend tests pass.**
+- Frontend: role-based routing, `/me` portal (status, details, history, password), admin
+  "Recent connections" card, old `/change-password` forwards to `/me`. Builds and lints clean.
 
 ## Still to do
 
-1. Backend wiring
-   - `api/schemas.py`: `AuthStatus` -> `{needs_setup, role, username, name}`; `MeOut`,
-     `MeUpdateIn`, `MePasswordIn`, `ConnectionOut`.
-   - `api/deps.py`: `get_current_wifi_user` (Wi-Fi sessions only; admin deps stay admin-only).
-   - `api/routes/auth.py`: login/status/setup return the new `AuthStatus`.
-   - New `api/routes/me.py`: `GET/PATCH /api/me`, `PUT /api/me/password`, `GET /api/me/connections`.
-   - `api/routes/wifi_users.py`: `GET /api/wifi-users/{id}/connections`.
-   - Remove `api/routes/self_service.py`, the self-service port logic in `api/middleware.py`,
-     `app/serve.py`; `main.py` imports; `portal/Dockerfile` back to a plain uvicorn CMD on 8080.
-   - Import connection events on startup (`main._startup`).
-2. Tests: replace `tests/test_self_service.py` with `/api/me` tests (sign-in as Wi-Fi user, role
-   routing, Wi-Fi session can't reach admin API, disabled user signed out, expired user can sign
-   in but not change password); `test_connection_log.py` (parsing, injection-safe, truncation).
-3. Frontend
-   - `AuthStatus` type; login page label "Student/Faculty ID or admin username"; route by role.
-   - `RequireAuth` per role; Wi-Fi user portal at `/me` (status, details form, history, password
-     with warning); remove `features/self-service` and the 8081 page.
-   - Admin user detail: "Recent connections" card.
-4. Deploy (`.\setup.ps1`), test end to end with `eapol_test` (history shows accept/reject),
-   update README (port 8080 for everyone, `/me`), commit each step.
+1. Test end to end on a throwaway stack (not the real one):
+   - `docker compose build`, then a test compose in the scratchpad: project `wifitest`,
+     portal on `127.0.0.1:8090`, its own `events` and `testdb` volumes, copies of
+     `data/certs` and `data/clients.conf`.
+   - Set up an admin, add a Wi-Fi user, run `eapol_test` (one good, one wrong password) from a
+     container on the `wifitest_default` network, then check the history in both
+     `/api/wifi-users/<id>/connections` and `/api/me/connections`.
+   - Check `/login` -> `/me` and `/login` -> admin in the browser, desktop and phone width.
+2. Update README: port 8080 for everyone, `/me`, connection history, no 8081.
+3. Delete this file, merge `wip/wifi-user-portal` into `main`, deploy with `.\setup.ps1`
+   (this opens 8080 to the network), and check the real stack.
 
 ## Notes
 
 - Wi-Fi user 484470 (Mario Jr Inguito) already exists on the server and its PEAP login was verified.
 - Use a strong admin password once 8080 is open to the network.
+- Docker Desktop was not running when work stopped (the PC had restarted); it was started again.
