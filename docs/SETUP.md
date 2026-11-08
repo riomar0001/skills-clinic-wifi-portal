@@ -8,7 +8,7 @@ When you're done you'll have:
 
 - **wifi-radius**: the login server (FreeRADIUS). The router asks it whether a Wi-Fi username and
   password are right.
-- **wifi-portal**: the website at `http://<server>:8080`. Admins manage Wi-Fi users there, and
+- **wifi-portal**: the website at `http://<server>`. Admins manage Wi-Fi users there, and
   students and faculty sign in to **My Wi-Fi** on the same page.
 
 ---
@@ -91,7 +91,7 @@ Both `wifi-radius` and `wifi-portal` should say **Up**.
 
 ### Option A: in the browser (recommended)
 
-1. On the server, open **http://localhost:8080**. You're sent to **Create the first admin**.
+1. On the server, open **http://localhost**. You're sent to **Create the first admin**.
 2. Enter the **setup code**. `setup` printed it; it's also in `data/setup-code.txt`, or run:
    ```bash
    docker compose logs portal | grep "setup code"
@@ -158,15 +158,15 @@ The server needs these open:
 | Port | From | Why |
 |---|---|---|
 | UDP **1812** | The TP-Link router | Wi-Fi logins |
-| TCP **8080** | The network | The portal (admins and Wi-Fi users) |
+| TCP **80** | The network | The portal (admins and Wi-Fi users) |
 
 - **Windows:** Docker Desktop adds its own firewall rules when it starts. If a phone on the Wi-Fi
-  can't open `http://<server>:8080`, allow Docker Desktop in **Windows Security → Firewall → Allow
+  can't open `http://<server>`, allow Docker Desktop in **Windows Security → Firewall → Allow
   an app**.
 - **Linux:** Docker opens published ports itself, even past `ufw`. Nothing to add unless another
   firewall sits in front.
 
-Test from another device on the network: open `http://<server address>:8080`. The sign-in page
+Test from another device on the network: open `http://<server address>`. The sign-in page
 should load.
 
 ## 8. Connect the router
@@ -257,7 +257,7 @@ The list's **Active / Expired / Disabled** tabs and the dashboard counts show wh
 
 ## 11. My Wi-Fi (for students and faculty)
 
-Share `http://<server address>:8080`. People sign in with their **Student/Faculty ID** and **Wi-Fi
+Share `http://<server address>`. People sign in with their **Student/Faculty ID** and **Wi-Fi
 password** on the same page admins use, and can:
 
 - see whether their access is active, when it ends, and when they last connected;
@@ -396,14 +396,14 @@ login server's user list from the restored database when it starts.
 
 - **The portal uses plain HTTP.** On the Wi-Fi, each person's traffic is encrypted by WPA2-Enterprise,
   but on the wired network a sign-in could be read by someone sniffing it. Keep the server on a
-  network only staff can plug into, and don't publish port 8080 to the internet.
+  network only staff can plug into, and don't publish port 80 to the internet.
 - **Wrong passwords:** 5 in a row lock that name from that device for 5 minutes. On Docker Desktop
   for Windows every visitor looks like the same address, so the lock applies to the name for
   everyone; on a Linux server it's per device.
 - **Windows firewall:** Docker Desktop's rule ("Docker Desktop Backend") allows any port on networks
-  set to **Public**, but only the ports Docker publishes (8080 and 1812 here) are listening, so
+  set to **Public**, but only the ports Docker publishes (80 and 1812 here) are listening, so
   that's all it exposes. If you switch the server's network to **Private**, that rule no longer
-  applies: add inbound rules for TCP 8080 and UDP 1812, or logins and the portal stop working.
+  applies: add inbound rules for TCP 80 and UDP 1812, or logins and the portal stop working.
 - **Router:** change the TP-Link's admin password from the default, keep WPS off, and keep the
   router secret private: anyone with it could ask the login server to check passwords.
 - **Backups and the `data` folder** contain password hashes and the certificate's private key.

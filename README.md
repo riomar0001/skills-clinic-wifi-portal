@@ -7,7 +7,7 @@ their device asks for a **username and password**, and the router checks it with
 ```
 phone ──Wi-Fi──> TL-WR840N ──WAN port──> modem (192.168.0.1) <──Ethernet── server PC (192.168.0.60)
                  192.168.0.83    "is ana / ****** ok?" ──UDP 1812──>  wifi-radius   (FreeRADIUS)
-                                                                       wifi-portal   (portal, :8080)
+                                                                       wifi-portal   (portal, :80)
 ```
 
 **The server must stay on with Docker running.** If it is off, nobody new can join the Wi-Fi.
@@ -18,7 +18,7 @@ Devices already connected stay connected.
 | Container | Port | Who uses it |
 |---|---|---|
 | `wifi-radius` | UDP **1812** | The router, to check logins. Also records every login attempt. |
-| `wifi-portal` | **8080**, the network | Everyone: `http://<server>:8080` (e.g. `http://192.168.0.60:8080`). One sign-in page: admins land in the admin portal, students and faculty in **My Wi-Fi**. |
+| `wifi-portal` | **80** (HTTP), the network | Everyone: `http://<server>` (e.g. `http://192.168.0.60`). One sign-in page: admins land in the admin portal, students and faculty in **My Wi-Fi**. |
 
 The portal keeps admins, Wi-Fi users, sessions, login history and an activity log in **SQLite**
 (Docker volume `portal-db`). It writes `data/users` for FreeRADIUS, which reloads within a few
@@ -41,7 +41,7 @@ sh setup.sh        # Linux
 This creates the certificate (valid until 2036), the router secret and starts both containers.
 It's safe to run again: it never replaces what already exists.
 
-Then open **http://localhost:8080**. The first admin needs the one-time code in
+Then open **http://localhost**. The first admin needs the one-time code in
 `data\setup-code.txt`.
 
 ## Using the portal (admins)
@@ -75,7 +75,7 @@ docker exec -it wifi-portal python -m app.cli add-wifi-user --id 123456 --first 
 
 ## My Wi-Fi (students and faculty)
 
-Share `http://<server address>:8080` (e.g. `http://192.168.0.60:8080`). People sign in with their
+Share `http://<server address>` (e.g. `http://192.168.0.60`). People sign in with their
 Student/Faculty ID and Wi-Fi password, on the same page admins use, to see their access and
 connection history, update their name and email, and (optionally) change their password. Details
 in [docs/SETUP.md](docs/SETUP.md#11-my-wi-fi-for-students-and-faculty).

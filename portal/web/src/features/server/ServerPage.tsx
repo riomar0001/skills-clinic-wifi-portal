@@ -109,7 +109,7 @@ export function ServerPage() {
           </CardHeader>
           <CardContent>
             <dl className="divide-y">
-              <Row label="Address"><code className="font-mono">http://&lt;this server&gt;:8080</code></Row>
+              <Row label="Address"><code className="font-mono">http://&lt;this server&gt;</code></Row>
               <Row label="Sign in with">Their Student/Faculty ID and Wi-Fi password, on the same page admins use.</Row>
               <Row label="They can">Update their name and email, see their connection history, and change their password (optional).</Row>
             </dl>

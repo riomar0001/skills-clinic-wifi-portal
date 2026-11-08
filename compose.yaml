@@ -22,7 +22,7 @@ services:
       - radius
     ports:
       # Open to the network so Wi-Fi users can reach their portal; admins sign in on the same page.
-      - "8080:8080"
+      - "80:8080"  # this PC's port 80 (plain http://<server>) to the portal's 8080 inside
     environment:
       RADIUS_HOST: radius
     volumes:

@@ -62,7 +62,7 @@ docker compose --project-directory $PSScriptRoot up -d --build
 Write-Host ''
 Write-Host 'Running:'
 Write-Host '  Login server      UDP 1812 (for the router)'
-Write-Host '  Portal            http://<this PC>:8080  (one sign-in for admins and Wi-Fi users)'
+Write-Host '  Portal            http://<this PC>  (one sign-in for admins and Wi-Fi users)'
 if (Test-Path (Join-Path $letsencrypt 'cloudflare.ini')) {
     Write-Host '  Certificate       Let''s Encrypt, renewed automatically (docker logs wifi-certs)'
 } else {
@@ -73,7 +73,7 @@ if (Test-Path (Join-Path $letsencrypt 'cloudflare.ini')) {
 $setupCode = Join-Path $data 'setup-code.txt'
 for ($i = 0; $i -lt 30 -and -not (Test-Path $setupCode); $i++) {
     try {
-        $status = Invoke-RestMethod http://localhost:8080/api/auth/status -TimeoutSec 2
+        $status = Invoke-RestMethod http://localhost/api/auth/status -TimeoutSec 2
         if (-not $status.needs_setup) { return }  # an admin already exists
     } catch {
         # Portal still starting; keep waiting.
@@ -82,5 +82,5 @@ for ($i = 0; $i -lt 30 -and -not (Test-Path $setupCode); $i++) {
 }
 if (Test-Path $setupCode) {
     Write-Host ''
-    Write-Host "First time? Open http://localhost:8080 and enter this setup code: $((Get-Content $setupCode -Raw).Trim())"
+    Write-Host "First time? Open http://localhost and enter this setup code: $((Get-Content $setupCode -Raw).Trim())"
 }

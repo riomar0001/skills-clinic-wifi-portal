@@ -67,7 +67,7 @@ docker compose up -d --build
 echo
 echo 'Running:'
 echo '  Login server   UDP 1812 (for the router)'
-echo '  Portal         http://<this machine>:8080  (one sign-in for admins and Wi-Fi users)'
+echo '  Portal         http://<this machine>  (one sign-in for admins and Wi-Fi users)'
 if [ -e letsencrypt/cloudflare.ini ]; then
     echo "  Certificate    Let's Encrypt, renewed automatically (docker logs wifi-certs)"
 else
@@ -77,7 +77,7 @@ fi
 # The portal writes the first-admin setup code a few seconds after it starts.
 i=0
 while [ $i -lt 30 ] && [ ! -e "$data/setup-code.txt" ]; do
-    if curl -fs http://localhost:8080/api/auth/status 2>/dev/null | grep -q '"needs_setup":false'; then
+    if curl -fs http://localhost/api/auth/status 2>/dev/null | grep -q '"needs_setup":false'; then
         exit 0  # an admin already exists
     fi
     i=$((i + 1))
@@ -85,5 +85,5 @@ while [ $i -lt 30 ] && [ ! -e "$data/setup-code.txt" ]; do
 done
 if [ -e "$data/setup-code.txt" ]; then
     echo
-    echo "First time? Open http://localhost:8080 and enter this setup code: $(cat "$data/setup-code.txt")"
+    echo "First time? Open http://localhost and enter this setup code: $(cat "$data/setup-code.txt")"
 fi
