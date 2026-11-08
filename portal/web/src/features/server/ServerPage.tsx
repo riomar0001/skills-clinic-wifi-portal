@@ -101,6 +101,19 @@ export function ServerPage() {
 
         <Card>
           <CardHeader>
+            <CardTitle>Self-service password page</CardTitle>
+            <CardDescription>Wi-Fi users can change their own password, without an admin.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <dl className="divide-y">
+              <Row label="Address"><code className="font-mono">http://&lt;this server&gt;:8081</code></Row>
+              <Row label="Who can open it">Any device on the network. It shows only the change-password form; this admin portal stays on the server.</Row>
+            </dl>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Backup</CardTitle>
             <CardDescription>A copy of the portal database: admins, Wi-Fi users and activity.</CardDescription>
           </CardHeader>

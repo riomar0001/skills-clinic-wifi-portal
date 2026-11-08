@@ -7,6 +7,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RequireAuth } from '@/features/auth/RequireAuth'
 import { SetupPage } from '@/features/auth/SetupPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { ChangeWifiPasswordPage } from '@/features/self-service/ChangeWifiPasswordPage'
 import { ServerPage } from '@/features/server/ServerPage'
 import { WifiUserDetailPage } from '@/features/wifi-users/WifiUserDetailPage'
 import { WifiUsersPage } from '@/features/wifi-users/WifiUsersPage'
@@ -15,6 +16,8 @@ import { NotFoundPage } from './NotFoundPage'
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/setup', element: <SetupPage /> },
+  // For Wi-Fi users; also the only page the network-facing self-service port serves.
+  { path: '/change-password', element: <ChangeWifiPasswordPage /> },
   {
     element: <RequireAuth />,
     children: [
