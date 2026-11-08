@@ -127,6 +127,7 @@ export function WifiUsersPage() {
                 <TableHead className="hidden md:table-cell">Email</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="hidden sm:table-cell">Expires</TableHead>
+                <TableHead className="hidden lg:table-cell">Devices</TableHead>
                 <TableHead className="w-12 pr-4"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
@@ -150,6 +151,10 @@ export function WifiUsersPage() {
                   <TableCell className={cn('hidden sm:table-cell', u.expired ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')}
                     title={u.expires_at === null ? undefined : formatDateTime(u.expires_at)}>
                     {describeExpiry(u.expires_at)}
+                  </TableCell>
+                  <TableCell className={cn('hidden tabular-nums lg:table-cell',
+                    u.device_limit !== null && u.device_count >= u.device_limit ? 'text-foreground' : 'text-muted-foreground')}>
+                    {u.device_limit === null ? `${u.device_count}` : `${u.device_count} / ${u.device_limit}`}
                   </TableCell>
                   <TableCell className="pr-4" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>

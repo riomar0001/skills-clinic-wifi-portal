@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { USERNAME_HINT, USERNAME_PATTERN, generatePassword } from '@/lib/password'
-import { EMAIL_DOMAIN, EMAIL_HINT, EMAIL_PATTERN, ID_HINT, ID_LABEL } from '@/lib/person'
+import { DEFAULT_DEVICE_LIMIT, EMAIL_DOMAIN, EMAIL_HINT, EMAIL_PATTERN, ID_HINT, ID_LABEL } from '@/lib/person'
 import { useCreateWifiUser } from './api'
 import type { Credentials } from './CredentialsDialog'
+import { DeviceLimitPicker } from './DeviceLimitPicker'
 import { ExpiryPicker } from './ExpiryPicker'
 import { WifiPasswordInput } from './PasswordInput'
 
@@ -29,6 +30,7 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
   const [note, setNote] = useState('')
   const [password, setPassword] = useState(generatePassword)
   const [expiresAt, setExpiresAt] = useState<number | null>(null)
+  const [deviceLimit, setDeviceLimit] = useState<number | null>(DEFAULT_DEVICE_LIMIT)
   const [pickerKey, setPickerKey] = useState(0)
 
   const close = () => {
@@ -39,6 +41,7 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
     setNote('')
     setPassword(generatePassword())
     setExpiresAt(null)
+    setDeviceLimit(DEFAULT_DEVICE_LIMIT)
     setPickerKey((k) => k + 1) // resets the picker's selected preset
     create.reset()
     onClose()
@@ -48,7 +51,7 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
     e.preventDefault()
     const name = username.trim()
     create.mutate(
-      { username: name, password, first_name: firstName, last_name: lastName, email: email.trim(), note, expires_at: expiresAt },
+      { username: name, password, first_name: firstName, last_name: lastName, email: email.trim(), note, expires_at: expiresAt, device_limit: deviceLimit },
       {
         onSuccess: () => {
           close()
@@ -95,6 +98,9 @@ export function CreateWifiUserDialog({ open, onClose, onCreated }: Props) {
             </FormField>
             <FormField label="Access expires" hint="After this the Wi-Fi refuses the login. Good for guests.">
               <ExpiryPicker key={pickerKey} value={expiresAt} onChange={setExpiresAt} />
+            </FormField>
+            <FormField label="Device limit" hint="Phones and laptops that may use this account. The first ones to log in are registered.">
+              <DeviceLimitPicker value={deviceLimit} onChange={setDeviceLimit} />
             </FormField>
             <FormField label="Note" hint="Optional, e.g. role or device">
               <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} />

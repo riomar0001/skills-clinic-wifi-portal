@@ -21,6 +21,8 @@ export interface Me {
   enabled: boolean
   expires_at: number | null
   expired: boolean
+  device_limit: number | null
+  devices: Device[]
   created_at: number
   last_connected_at: number | null
 }
@@ -44,8 +46,19 @@ export interface WifiUser {
   /** Unix seconds; null = never expires. */
   expires_at: number | null
   expired: boolean
+  /** How many devices may use the account; null = no limit. */
+  device_limit: number | null
+  device_count: number
   created_at: number
   updated_at: number
+}
+
+/** A phone or laptop registered to a Wi-Fi account on its first successful login. */
+export interface Device {
+  id: number
+  mac: string
+  first_seen_at: number
+  last_seen_at: number
 }
 
 export type WifiStatusFilter = 'all' | 'active' | 'expired' | 'disabled'

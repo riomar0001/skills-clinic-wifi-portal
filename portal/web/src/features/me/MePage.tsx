@@ -1,4 +1,4 @@
-import { CalendarClock, CircleAlert, CircleCheck, Clock, KeyRound, TriangleAlert, Wifi } from 'lucide-react'
+import { CalendarClock, CircleAlert, CircleCheck, Clock, KeyRound, Smartphone, TriangleAlert, Wifi } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { errorMessage } from '@/api/client'
@@ -6,12 +6,13 @@ import type { Me } from '@/api/types'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { ConnectionTable } from '@/components/common/ConnectionTable'
 import { FormField } from '@/components/common/FormField'
-import { ErrorAlert, ListSkeleton, PageSkeleton } from '@/components/common/states'
+import { EmptyState, ErrorAlert, ListSkeleton, PageSkeleton } from '@/components/common/states'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatDateTime, timeAgo } from '@/lib/format'
 import { userStatus } from '@/lib/expiry'
@@ -36,10 +37,12 @@ export function MePage() {
       <Tabs defaultValue="details" className="gap-4">
         <TabsList>
           <TabsTrigger value="details">My details</TabsTrigger>
-          <TabsTrigger value="history">Connection history</TabsTrigger>
+          <TabsTrigger value="devices">Devices</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="password">Password</TabsTrigger>
         </TabsList>
         <TabsContent value="details"><DetailsForm key={m.username} me={m} /></TabsContent>
+        <TabsContent value="devices"><MyDevices me={m} /></TabsContent>
         <TabsContent value="history"><History /></TabsContent>
         <TabsContent value="password"><PasswordForm me={m} /></TabsContent>
       </Tabs>
@@ -124,6 +127,46 @@ function DetailsForm({ me }: { me: Me }) {
           <Button type="submit" disabled={!dirty || update.isPending}>{update.isPending ? 'Saving…' : 'Save'}</Button>
         </CardFooter>
       </form>
+    </Card>
+  )
+}
+
+function MyDevices({ me }: { me: Me }) {
+  const count = me.devices.length
+  const limit = me.device_limit
+  return (
+    <Card className="gap-0 overflow-hidden py-0">
+      <CardHeader className="border-b py-4">
+        <CardTitle>My devices</CardTitle>
+        <CardDescription>
+          {limit === null
+            ? 'Phones and laptops that have joined the Wi-Fi with your account.'
+            : `You can use up to ${limit} device${limit === 1 ? '' : 's'}; ${count} ${count === 1 ? 'is' : 'are'} registered.`}
+          {limit !== null && count >= limit && ' New devices will be refused. Ask a Skills Clinic admin to remove one you no longer use.'}
+        </CardDescription>
+      </CardHeader>
+      {count === 0 ? (
+        <EmptyState icon={<Smartphone />} title="No devices yet">Your phone or laptop appears here after it joins the Wi-Fi.</EmptyState>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="pl-4">Device address</TableHead>
+              <TableHead className="hidden sm:table-cell">First seen</TableHead>
+              <TableHead className="pr-4">Last used</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {me.devices.map((d) => (
+              <TableRow key={d.id}>
+                <TableCell className="pl-4 font-mono text-xs">{d.mac}</TableCell>
+                <TableCell className="hidden text-muted-foreground sm:table-cell">{formatDateTime(d.first_seen_at)}</TableCell>
+                <TableCell className="pr-4 text-muted-foreground">{timeAgo(d.last_seen_at)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </Card>
   )
 }

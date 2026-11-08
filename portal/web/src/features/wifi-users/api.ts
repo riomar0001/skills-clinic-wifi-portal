@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
-import type { Connection, WifiStatusFilter, WifiUser } from '../../api/types'
+import type { Connection, Device, WifiStatusFilter, WifiUser } from '../../api/types'
 
 export const wifiKeys = {
   all: ['wifi-users'] as const,
@@ -34,6 +34,22 @@ export function useWifiUser(username: string) {
   return useQuery({ queryKey: wifiKeys.detail(username), queryFn: () => api.get<WifiUser>(path(username)) })
 }
 
+export function useWifiUserDevices(username: string) {
+  return useQuery({
+    queryKey: [...wifiKeys.detail(username), 'devices'],
+    queryFn: () => api.get<Device[]>(`${path(username)}/devices`),
+    refetchInterval: 30_000,
+  })
+}
+
+export function useRemoveDevice(username: string) {
+  const invalidate = useInvalidateAfterChange()
+  return useMutation({
+    mutationFn: (deviceId: number) => api.delete<void>(`${path(username)}/devices/${deviceId}`),
+    onSuccess: invalidate,
+  })
+}
+
 /** Any change can affect lists, counts and the activity log, so refresh them all. */
 function useInvalidateAfterChange() {
   const qc = useQueryClient()
@@ -53,6 +69,7 @@ export interface NewWifiUser {
   email: string
   note: string
   expires_at: number | null
+  device_limit: number | null
 }
 
 export function useCreateWifiUser() {
@@ -67,7 +84,7 @@ export function useUpdateWifiUser(username: string) {
   const invalidate = useInvalidateAfterChange()
   return useMutation({
     // expires_at: null removes the expiry; leaving it out keeps it.
-    mutationFn: (body: Partial<Pick<WifiUser, 'username' | 'first_name' | 'last_name' | 'note' | 'enabled' | 'expires_at'> & { email: string }>) =>
+    mutationFn: (body: Partial<Pick<WifiUser, 'username' | 'first_name' | 'last_name' | 'note' | 'enabled' | 'expires_at' | 'device_limit'> & { email: string }>) =>
       api.patch<WifiUser>(path(username), body),
     onSuccess: invalidate,
   })

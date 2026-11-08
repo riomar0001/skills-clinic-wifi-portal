@@ -24,6 +24,7 @@ import { EMAIL_DOMAIN, EMAIL_HINT, EMAIL_PATTERN, ID_LABEL, fullName } from '@/l
 import { cn } from '@/lib/utils'
 import { useDeleteWifiUser, useSetWifiPassword, useUpdateWifiUser, useWifiUser, useWifiUserConnections } from './api'
 import { CredentialsDialog, type Credentials } from './CredentialsDialog'
+import { DevicesCard } from './DevicesCard'
 import { ExpiryPicker } from './ExpiryPicker'
 import { WifiPasswordInput } from './PasswordInput'
 import { UserAvatar } from './UserAvatar'
@@ -294,6 +295,7 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
         </div>
       </div>
 
+      <DevicesCard user={user} />
       <RecentConnections username={user.username} />
 
       <Dialog open={resetOpen} onOpenChange={(open) => !setPassword.isPending && setResetOpen(open)}>

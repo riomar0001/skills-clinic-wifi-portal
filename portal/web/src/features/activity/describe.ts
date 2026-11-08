@@ -8,6 +8,8 @@ const DESCRIPTIONS: Record<string, (target: string) => string> = {
   'wifi.password': (t) => `reset the password of ${t}`,
   'wifi.expiry': (t) => `set an expiry date for ${t}`,
   'wifi.rename': (t) => `changed a Wi-Fi user's ID from ${t}`,
+  'wifi.device_limit': (t) => `set the device limit of ${t}`,
+  'wifi.device_remove': (t) => `removed a device from ${t}`,
   'wifi.expiry_clear': (t) => `removed the expiry date of ${t}`,
   'wifi.delete': (t) => `deleted Wi-Fi user ${t}`,
   'wifi.import': (t) => `imported ${t} from the old user list`,
