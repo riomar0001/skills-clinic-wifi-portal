@@ -12,7 +12,7 @@ export interface Credentials {
   password: string
 }
 
-export function CredentialRow({ label, value }: { label: string; value: string }) {
+function CredentialRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-1.5">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>

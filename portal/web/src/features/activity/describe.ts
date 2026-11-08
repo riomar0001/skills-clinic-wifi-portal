@@ -21,6 +21,7 @@ const DESCRIPTIONS: Record<string, (target: string) => string> = {
   'admin.setup': () => 'set up the portal',
   'admin.login': () => 'signed in',
   'admin.create': (t) => `added admin ${t}`,
+  'admin.promote': (t) => `made Wi-Fi user ${t} an admin`,
   'admin.delete': (t) => `removed admin ${t}`,
   'admin.password': (t) => `changed the password of admin ${t}`,
   'admin.reveal_secret': () => 'viewed the router secret',

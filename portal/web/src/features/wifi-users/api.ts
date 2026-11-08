@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
-import type { Connection, Device, ImportResult, WifiStatusFilter, WifiUser } from '../../api/types'
+import type { Admin, Connection, Device, ImportResult, WifiStatusFilter, WifiUser } from '../../api/types'
 
 export const wifiKeys = {
   all: ['wifi-users'] as const,
@@ -117,6 +117,16 @@ export function useDeleteWifiUser() {
       qc.removeQueries({ queryKey: wifiKeys.detail(username) })
       return invalidate()
     },
+  })
+}
+
+/** Makes a Wi-Fi user an admin who signs in with their ID and Wi-Fi password. */
+export function usePromoteWifiUser() {
+  const qc = useQueryClient()
+  const invalidate = useInvalidateAfterChange()
+  return useMutation({
+    mutationFn: (username: string) => api.post<Admin>(`${path(username)}/promote`),
+    onSuccess: () => Promise.all([qc.invalidateQueries({ queryKey: ['admins'] }), invalidate()]),
   })
 }
 

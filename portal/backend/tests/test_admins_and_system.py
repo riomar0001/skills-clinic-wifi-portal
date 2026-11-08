@@ -2,11 +2,14 @@ import hashlib
 import socket
 import struct
 import threading
+import time
 
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 
 from app.core.config import Settings
 from app.core.passwords import nt_hash
+from app.db.models import WifiUser
 from app.main import create_app
 from app.services.admins import AdminService
 from app.services.radius_health import ACCESS_REJECT, RadiusHealthChecker
@@ -81,18 +84,79 @@ def test_console_reset_also_sets_wifi_password(admin_client, settings):
     assert nt_hash("Console-Reset-42") in settings.users_file.read_text()
 
 
-def test_promoting_a_wifi_user_keeps_their_wifi_password(admin_client, settings):
-    admin_client.post("/api/wifi-users", json=person("484470", password="Wifi-Pass-11"))
-    wifi_line_before = settings.users_file.read_text()
+def _login(app, username, password):
+    with TestClient(app, headers=PORTAL_HEADERS) as c:
+        return c.post("/api/auth/login", json={"username": username, "password": password})
 
-    r = admin_client.post("/api/admins", json={"username": "484470", "password": "admin-pass-2024"})
+
+def test_promoted_wifi_user_signs_in_as_admin_with_their_wifi_password(admin_client, settings):
+    admin_client.post("/api/wifi-users", json=person("484470", password="Wifi-Pass"))  # 9 chars: fine
+    users_before = settings.users_file.read_text()
+
+    r = admin_client.post("/api/wifi-users/484470/promote")
     assert r.status_code == 201, r.text
-    assert admin_client.post("/api/admins", json={"username": "484470", "password": "admin-pass-2024"}).status_code == 409
+    assert r.json()["uses_wifi_password"] is True
+    assert admin_client.post("/api/wifi-users/484470/promote").status_code == 409
+    assert admin_client.get("/api/activity").json()[0]["action"] == "admin.promote"
 
-    assert settings.users_file.read_text() == wifi_line_before  # devices keep working
-    with TestClient(admin_client.app, headers=PORTAL_HEADERS) as c:
-        assert c.post("/api/auth/login", json={"username": "484470", "password": "admin-pass-2024"}).json()["role"] == "admin"
-        assert c.post("/api/auth/login", json={"username": "484470", "password": "Wifi-Pass-11"}).json()["role"] == "wifi"
+    assert settings.users_file.read_text() == users_before  # their devices keep working
+    assert _login(admin_client.app, "484470", "Wifi-Pass").json()["role"] == "admin"
+    assert _login(admin_client.app, "484470", "wrong-pass-1").status_code == 401
+
+
+def test_promote_refuses_unknown_or_inactive_wifi_users(admin_client):
+    assert admin_client.post("/api/wifi-users/nobody/promote").status_code == 404
+    admin_client.post("/api/wifi-users", json=person("484470"))
+    admin_client.patch("/api/wifi-users/484470", json={"enabled": False})
+    r = admin_client.post("/api/wifi-users/484470/promote")
+    assert r.status_code == 400 and "off or expired" in r.json()["detail"]
+
+
+def test_promoted_admin_loses_admin_sign_in_with_their_wifi_access(admin_client):
+    admin_client.post("/api/wifi-users", json=person("484470", password="Wifi-Pass-11"))
+    admin_client.post("/api/wifi-users/484470/promote")
+
+    admin_client.patch("/api/wifi-users/484470", json={"enabled": False})
+    assert _login(admin_client.app, "484470", "Wifi-Pass-11").status_code == 401  # fails closed
+    admin_client.patch("/api/wifi-users/484470", json={"enabled": True})
+    assert _login(admin_client.app, "484470", "Wifi-Pass-11").json()["role"] == "admin"
+
+    with admin_client.app.state.session_factory() as db:
+        db.execute(update(WifiUser).values(expires_at=int(time.time()) - 60))
+        db.commit()
+    # Expired: still allowed into My Wi-Fi (to see why), but no longer into the admin portal.
+    assert _login(admin_client.app, "484470", "Wifi-Pass-11").json()["role"] == "wifi"
+
+    admin_client.delete("/api/wifi-users/484470")
+    assert _login(admin_client.app, "484470", "Wifi-Pass-11").status_code == 401
+
+
+def test_promoted_admin_password_change_stays_one_password(admin_client, settings):
+    admin_client.post("/api/wifi-users", json=person("484470", password="Wifi-Pass-11"))
+    admin_client.post("/api/wifi-users/484470/promote")
+    with TestClient(admin_client.app, headers=PORTAL_HEADERS) as me:
+        assert me.post("/api/auth/login", json={"username": "484470", "password": "Wifi-Pass-11"}).status_code == 200
+        r = me.post("/api/router-secret", json={"password": "Wifi-Pass-11"})
+        assert r.status_code == 200, r.text  # re-entering the password works too
+        r = me.put("/api/account/password", json={"current_password": "Wifi-Pass-11", "new_password": "Next-Pass-2024"})
+        assert r.status_code == 204, r.text
+
+    assert nt_hash("Next-Pass-2024") in settings.users_file.read_text()
+    assert _login(admin_client.app, "484470", "Next-Pass-2024").json()["role"] == "admin"
+    # An admin resetting their Wi-Fi password resets their admin sign-in too: it's one password.
+    admin_client.put("/api/wifi-users/484470/password", json={"password": "Reset-Pass-77"})
+    assert _login(admin_client.app, "484470", "Reset-Pass-77").json()["role"] == "admin"
+    assert _login(admin_client.app, "484470", "Next-Pass-2024").status_code == 401
+
+
+def test_console_reset_gives_an_orphaned_promoted_admin_its_own_password(admin_client):
+    admin_client.post("/api/wifi-users", json=person("484470", password="Wifi-Pass-11"))
+    admin_client.post("/api/wifi-users/484470/promote")
+    admin_client.delete("/api/wifi-users/484470")
+    app = admin_client.app
+    with app.state.session_factory() as db:
+        AdminService(db, app.state.exporter).reset_password("484470", "Console-Reset-42")
+    assert _login(app, "484470", "Console-Reset-42").json()["role"] == "admin"
 
 
 def test_certificate_and_downloads(admin_client):

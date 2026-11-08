@@ -1,26 +1,32 @@
-import { CircleAlert, CircleCheck, ShieldCheck } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router'
+import { toast } from 'sonner'
 import { errorMessage } from '@/api/client'
 import type { WifiUser } from '@/api/types'
-import { FormField } from '@/components/common/FormField'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { generatePassword } from '@/lib/password'
 import { fullName } from '@/lib/person'
-import { useAdmins, useCreateAdmin } from '../admins/api'
-import { CredentialRow } from './CredentialsDialog'
-import { WifiPasswordInput } from './PasswordInput'
+import { useAdmins } from '../admins/api'
+import { usePromoteWifiUser } from './api'
 
-/** Promote a Wi-Fi user to admin: an admin account with the same ID and its own password. */
+/** Promote a Wi-Fi user to admin: they sign in to the admin portal with their ID and Wi-Fi password. */
 export function AdminAccessCard({ user }: { user: WifiUser }) {
   const admins = useAdmins()
-  const [open, setOpen] = useState(false)
+  const promote = usePromoteWifiUser()
+  const [confirming, setConfirming] = useState(false)
   const isAdmin = admins.data?.some((a) => a.username === user.username) ?? false
+  const name = fullName(user) || user.username
+
+  const confirm = () =>
+    promote.mutate(user.username, {
+      onSuccess: () => toast.success(`${name} is now an admin. They sign in with their ID and Wi-Fi password.`),
+      onError: (err) => toast.error(errorMessage(err)),
+      onSettled: () => setConfirming(false),
+    })
 
   return (
     <Card>
@@ -29,7 +35,7 @@ export function AdminAccessCard({ user }: { user: WifiUser }) {
         <CardDescription>
           {isAdmin
             ? 'This person can manage the portal. Remove it on the Admins page.'
-            : 'Let this person manage the portal with a separate admin password. Their Wi-Fi password stays the same.'}
+            : 'Let this person manage the portal. They sign in with their ID and Wi-Fi password.'}
         </CardDescription>
         {isAdmin && <CardAction><Badge variant="secondary"><ShieldCheck /> Admin</Badge></CardAction>}
       </CardHeader>
@@ -41,83 +47,21 @@ export function AdminAccessCard({ user }: { user: WifiUser }) {
         ) : isAdmin ? (
           <Button variant="outline" asChild><Link to="/admins"><ShieldCheck /> Manage admins</Link></Button>
         ) : (
-          <Button variant="outline" onClick={() => setOpen(true)}><ShieldCheck /> Make admin</Button>
+          <Button variant="outline" onClick={() => setConfirming(true)}><ShieldCheck /> Make admin</Button>
         )}
       </CardFooter>
-      <PromoteDialog user={user} open={open} onClose={() => setOpen(false)} />
+      <ConfirmDialog
+        open={confirming}
+        title={`Make ${name} an admin?`}
+        description={<>
+          They can add, change and delete Wi-Fi users and admins, and see the router secret. They sign in with
+          ID <span className="font-mono">{user.username}</span> and their current Wi-Fi password; nothing else changes.
+        </>}
+        confirmLabel="Make admin"
+        busy={promote.isPending}
+        onConfirm={confirm}
+        onOpenChange={setConfirming}
+      />
     </Card>
-  )
-}
-
-function PromoteDialog({ user, open, onClose }: { user: WifiUser; open: boolean; onClose: () => void }) {
-  const create = useCreateAdmin()
-  const [password, setPassword] = useState(generatePassword)
-  const [created, setCreated] = useState<string | null>(null)
-
-  const close = () => {
-    setPassword(generatePassword())
-    setCreated(null)
-    create.reset()
-    onClose()
-  }
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    create.mutate({ username: user.username, password }, { onSuccess: () => setCreated(password) })
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(next) => !next && !create.isPending && close()}>
-      <DialogContent className="sm:max-w-md">
-        {created ? (
-          <>
-            <DialogHeader>
-              <div className="mb-1 flex size-10 items-center justify-center rounded-full bg-success/10 text-success" aria-hidden>
-                <CircleCheck className="size-5" />
-              </div>
-              <DialogTitle>{fullName(user) || user.username} is now an admin</DialogTitle>
-              <DialogDescription>
-                This admin password won’t be shown again. Give it to them; they sign in with their ID and this
-                password to reach the admin portal.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4">
-              <CredentialRow label="Admin username" value={user.username} />
-              <CredentialRow label="Admin password" value={created} />
-            </div>
-            <DialogFooter><Button onClick={close}>Done</Button></DialogFooter>
-          </>
-        ) : (
-          <form onSubmit={submit} className="grid gap-6">
-            <DialogHeader>
-              <DialogTitle>Make {fullName(user) || user.username} an admin?</DialogTitle>
-              <DialogDescription>
-                They can add, change and delete Wi-Fi users and admins, and see the router secret. They get an admin
-                account named <span className="font-mono">{user.username}</span> with the password below.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-5">
-              {create.isError && (
-                <Alert variant="destructive"><CircleAlert /><AlertDescription>{errorMessage(create.error)}</AlertDescription></Alert>
-              )}
-              <FormField label="Admin password" hint="At least 10 characters. Their Wi-Fi password doesn’t change.">
-                <WifiPasswordInput value={password} onChange={setPassword} />
-              </FormField>
-              <Alert>
-                <ShieldCheck />
-                <AlertDescription>
-                  Signing in with the admin password opens the admin portal; the Wi-Fi password still opens My Wi-Fi. If
-                  they later change their admin password, their Wi-Fi password changes to match.
-                </AlertDescription>
-              </Alert>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={close} disabled={create.isPending}>Cancel</Button>
-              <Button type="submit" disabled={create.isPending}>{create.isPending ? 'Saving…' : 'Make admin'}</Button>
-            </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
   )
 }

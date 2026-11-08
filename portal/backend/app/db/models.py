@@ -5,6 +5,8 @@ import time
 from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from app.core.passwords import WIFI_LINKED_HASH
+
 
 def now() -> int:
     return int(time.time())
@@ -21,6 +23,11 @@ class Admin(Base):
     username: Mapped[str] = mapped_column(String(32), unique=True)
     password_hash: Mapped[str] = mapped_column(String(200))
     created_at: Mapped[int] = mapped_column(Integer, default=now)
+
+    @property
+    def uses_wifi_password(self) -> bool:
+        """Promoted from a Wi-Fi user: signs in with the Wi-Fi password of the account with the same ID."""
+        return self.password_hash == WIFI_LINKED_HASH
 
 
 class AdminSession(Base):

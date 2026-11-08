@@ -99,6 +99,10 @@ def verify_admin_password(password: str, stored: str) -> bool:
     return hmac.compare_digest(digest.hex(), hash_hex)
 
 
+# Admin.password_hash of a Wi-Fi user promoted to admin: they sign in with their Wi-Fi password.
+# Not a valid PBKDF2 string, so verify_admin_password never accepts anything for it.
+WIFI_LINKED_HASH = "wifi-linked"
+
 # Checked when a username doesn't exist, so a wrong username takes as long as a wrong password.
 DUMMY_ADMIN_HASH = hash_admin_password(secrets.token_urlsafe(16))
 

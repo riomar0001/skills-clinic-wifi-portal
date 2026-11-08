@@ -190,6 +190,7 @@ StatusFilter = Literal["all", "active", "disabled", "expired"]
 class AdminOut(_Out):
     username: str
     created_at: int
+    uses_wifi_password: bool  # promoted Wi-Fi user: signs in with their Wi-Fi password
 
 
 class AdminCreateIn(_In):

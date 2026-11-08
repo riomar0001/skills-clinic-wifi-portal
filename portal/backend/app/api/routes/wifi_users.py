@@ -2,8 +2,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Request
 
-from app.api.deps import CurrentAdminDep, DbDep, SettingsDep, WifiServiceDep
-from app.api.schemas import (ConnectionOut, DeviceOut, ImportRowOut, PasswordIn, StatusFilter, WifiUserCreateIn,
+from app.api.deps import AdminServiceDep, CurrentAdminDep, DbDep, SettingsDep, WifiServiceDep
+from app.api.schemas import (AdminOut, ConnectionOut, DeviceOut, ImportRowOut, PasswordIn, StatusFilter, WifiUserCreateIn,
                              WifiUserImportIn, WifiUserImportOut, WifiUserOut, WifiUserUpdateIn)
 from app.core.passwords import USERNAME_PATTERN
 from app.services import csv_import
@@ -39,6 +39,12 @@ def import_users(body: WifiUserImportIn, current: CurrentAdminDep, db: DbDep, re
         error_count=sum(1 for r in rows if r.errors),
         added=added,
     )
+
+
+@router.post("/{username}/promote", response_model=AdminOut, status_code=201)
+def promote(username: Username, current: CurrentAdminDep, service: AdminServiceDep):
+    """Makes this Wi-Fi user an admin who signs in with their ID and Wi-Fi password."""
+    return service.promote(current.admin.username, username)
 
 
 @router.get("/{username}", response_model=WifiUserOut)

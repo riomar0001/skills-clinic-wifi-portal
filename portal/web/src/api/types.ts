@@ -66,6 +66,8 @@ export type WifiStatusFilter = 'all' | 'active' | 'expired' | 'disabled'
 export interface Admin {
   username: string
   created_at: number
+  /** Promoted from a Wi-Fi user: signs in with the Wi-Fi password of that account. */
+  uses_wifi_password: boolean
 }
 
 export interface ActivityEntry {

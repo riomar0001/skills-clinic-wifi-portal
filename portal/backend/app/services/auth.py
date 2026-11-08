@@ -20,6 +20,7 @@ from app.repositories.access_requests import AccessRequestRepository
 from app.repositories.activity import ActivityRepository
 from app.repositories.admins import AdminRepository, SessionRepository, WifiSessionRepository
 from app.repositories.wifi_users import WifiUserRepository
+from app.services.admin_password import admin_password_matches
 
 LOGIN_MAX_FAILURES = 5
 LOGIN_LOCK_SECONDS = 300
@@ -147,7 +148,8 @@ class AuthService:
             raise TooManyAttempts(f"Too many wrong passwords. Try again in {wait // 60 + 1} minute(s).")
 
         admin = self.admins.get(name)
-        admin_ok = verify_admin_password(password, admin.password_hash if admin else DUMMY_ADMIN_HASH)
+        admin_ok = (admin_password_matches(self.db, admin, password) if admin is not None
+                    else verify_admin_password(password, DUMMY_ADMIN_HASH))
         wifi_user = self.wifi_users.get(name.lower())
         try:
             given = nt_hash(password)

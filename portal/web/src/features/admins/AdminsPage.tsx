@@ -57,6 +57,11 @@ export function AdminsPage() {
                       <Avatar className="size-9"><AvatarFallback className="text-muted-foreground"><ShieldCheck className="size-4" /></AvatarFallback></Avatar>
                       <span className="font-medium">{a.username}</span>
                       {a.username === me && <Badge variant="secondary">You</Badge>}
+                      {a.uses_wifi_password && (
+                        <Badge variant="outline" title="Promoted from a Wi-Fi user: signs in with their Wi-Fi password">
+                          Wi-Fi password
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="hidden text-muted-foreground sm:table-cell">{formatDate(a.created_at)}</TableCell>
