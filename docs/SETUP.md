@@ -13,6 +13,8 @@ When you're done you'll have:
 - **wifi-proxy**: the portal's front door on ports 80 and 443. It serves HTTPS once you add a
   Let's Encrypt certificate (step 12).
 - **wifi-certs**: optional; gets and renews that certificate. Does nothing until step 12.
+- **wifi-tunnel**: optional; serves the portal through Cloudflare so people see an "offline" page
+  when the server is down. Only runs after step 13.
 
 ---
 
@@ -360,7 +362,8 @@ In Cloudflare: your domain → **DNS → Records → Add record**:
 
 It must be **DNS only**: Cloudflare's proxy can't reach a private address. The record only works on
 your own network, and it reveals nothing beyond that private address. Check it from the server:
-`nslookup wifi.riomar.dev 1.1.1.1` should answer `192.168.0.60`.
+`nslookup wifi.riomar.dev 1.1.1.1` should answer `192.168.0.60`. With step 13, the tunnel's own
+record replaces this one.
 
 ### c. Test, then turn it on
 
@@ -400,6 +403,98 @@ switches back to the self-made certificate by itself, and devices must forget th
 The portal goes back to `http://<server>` within about 10 seconds; you can then delete the DNS record.
 Also delete the token in Cloudflare (**API Tokens → … → Delete**).
 
+## 13. Optional: an offline page through Cloudflare Tunnel
+
+Normally a browser goes straight to the server, so when the server is off it just times out. With a
+**Cloudflare Tunnel**, the `wifi-tunnel` container keeps a connection open from the server to
+Cloudflare, and `https://wifi.riomar.dev` is served through Cloudflare. When the server is off or
+restarting, a small Cloudflare Worker (`fallback/`) shows a **"Wi-Fi portal offline"** page instead
+of an error. It works with or without step 12.
+
+**Trade-offs. Read these first:**
+
+- The portal becomes **reachable from anywhere on the internet**, not just the clinic. Use strong
+  admin passwords. Wrong-password locks still work, per visitor.
+- It **needs the internet**. If the clinic's internet is down, `wifi.riomar.dev` doesn't load even
+  inside the clinic. On the clinic network, `https://<server address>` still works (accept the name
+  warning). Wi-Fi logins don't need the internet at all.
+- Cloudflare decrypts and re-encrypts the portal traffic on its servers.
+- Everyone inside the clinic reaches Cloudflare from the same public address. So 5 wrong passwords
+  for a name, from inside the clinic, lock that name for the whole clinic for 5 minutes.
+- Bonus: if the server's address changes, the DNS record no longer needs updating.
+
+### a. Create the tunnel
+
+1. <https://one.dash.cloudflare.com> → your account → **Networks → Connectors → Cloudflare Tunnels
+   → Create a tunnel** (older dashboards: **Networks → Tunnels**). Choose **Cloudflared**.
+2. **Name:** `wifi-portal` → **Save tunnel**.
+3. Under **Choose your environment**, pick **Docker**. The command shown ends with `--token eyJ…`.
+   Copy **only the long token** after `--token`.
+4. In the project folder, save it in a new file `tunnel/token` (one line, nothing else). In Notepad
+   use **Save as type: All files (\*.\*)**. Git ignores this folder. Never paste the token into chat
+   or email: anyone with it can run your tunnel.
+5. Run setup again (step 4). It starts `wifi-tunnel` because the token file exists. Within a few
+   seconds the dashboard shows the tunnel as **Healthy**, and
+   `docker compose logs tunnel --tail 20` shows `Registered tunnel connection`.
+
+### b. Point the name at the tunnel
+
+1. Cloudflare → your domain → **DNS → Records**: **delete** the `wifi` A record from step 12b.
+   The tunnel can't add its own record while that one exists. `https://wifi.riomar.dev` doesn't
+   load until the next step is done.
+2. Back in the tunnel → **Public hostnames** (or **Published application routes**) → **Add**:
+
+   | Field | Value |
+   |---|---|
+   | Subdomain | `wifi` |
+   | Domain | `riomar.dev` |
+   | Path | empty |
+   | Service type | **HTTP** |
+   | URL | `proxy:8081` |
+
+   It must be `proxy:8081`. That entrance takes the visitor's address from Cloudflare, so the
+   wrong-password lock can't be dodged. `portal:8080` would let anyone fake their address, and
+   `proxy:80` loops forever.
+3. **Save.** Cloudflare adds a proxied (orange cloud) `wifi` record pointing at the tunnel.
+   Open `https://wifi.riomar.dev`, also on a phone using mobile data: the portal should load.
+
+### c. Deploy the offline page
+
+Once, from any computer with Node.js (the server is fine), in the project folder:
+
+```bash
+cd fallback
+npm install
+npm test               # checks the page logic
+npx wrangler login     # opens Cloudflare in the browser; sign in and allow access
+npm run deploy
+```
+
+If your name isn't `wifi.riomar.dev`, change `routes` in `fallback/wrangler.jsonc` first. The
+message is `MESSAGE` in `fallback/src/index.js`; run `npm run deploy` again after changing it.
+Cloudflare's free plan runs the Worker for up to 100,000 requests a day, far more than the portal
+uses.
+
+Test it:
+
+```bash
+docker compose stop tunnel      # pretend the server is off
+```
+
+Within a minute, `https://wifi.riomar.dev` shows **Wi-Fi portal offline** (it retries every minute
+by itself). Then bring it back:
+
+```bash
+docker compose start tunnel
+```
+
+### Turn it off
+
+1. `docker compose stop tunnel`, then delete `tunnel/token`.
+2. In Cloudflare, delete the Worker (**Workers & Pages → wifi-portal-fallback → Settings → Delete**),
+   then the tunnel (**Networks → Connectors → wifi-portal → Delete**).
+3. **DNS → Records:** delete the tunnel's `wifi` CNAME record and add the A record from step 12b again.
+
 ---
 
 ## Everyday commands
@@ -412,6 +507,7 @@ Run these in the project folder.
 | Portal log | `docker compose logs portal --tail 50` |
 | Login server log | `docker compose logs radius --tail 50` |
 | Certificate log (step 12) | `docker compose logs certs --tail 50` |
+| Tunnel log (step 13) | `docker compose logs tunnel --tail 50` |
 | Restart both | `docker compose restart` |
 | Stop both | `docker compose stop` |
 | Start again | `docker compose start` (or run setup again) |
@@ -423,6 +519,7 @@ Two things hold everything:
 
 1. **The `data` folder**: certificate, keys, router secret. Copy it somewhere safe once; it rarely changes.
    With step 12, also keep the `letsencrypt` folder (the Cloudflare token), or just make a new token.
+   With step 13, keep the `tunnel` folder too.
 2. **The portal database**: admins, Wi-Fi users, history. Download it from the portal:
    **Server → Download backup** (a `.db` file). Do this regularly. Keep it private: it contains password hashes.
 
@@ -442,14 +539,16 @@ login server's user list from the restored database when it starts.
 ## Moving to another machine
 
 1. On the old server: download a database backup, and copy the whole project folder **including `data`**
-   (and `letsencrypt`, if you use step 12; the new server gets a fresh certificate with the same name).
+   (and `letsencrypt`, if you use step 12; the new server gets a fresh certificate with the same name,
+   and `tunnel`, if you use step 13).
 2. On the new machine: install Docker (step 2), put the folder there, and run setup (step 4).
    Because `data` came along, the certificate and router secret stay the same, so phones won't see
    a new certificate.
 3. Restore the database backup (above).
 4. Give the new machine a fixed address (step 6), then follow
    [Changing the server's address](#changing-the-servers-address) if it differs from the old one.
-5. Stop the old one: `docker compose down` in its project folder.
+5. Stop the old one: `docker compose --profile tunnel down` in its project folder. With step 13, a
+   tunnel left running on the old machine would get some of the visitors.
 
 ## Changing the server's address
 
@@ -461,7 +560,7 @@ tied to the name (`wifi.riomar.dev`), not the address. Only these places point t
 |---|---|---|
 | Modem DHCP (step 6) | Reserve the new address for the server's MAC, or set it on the server itself | The address may change again |
 | Router → **Wireless Security** (step 8), on every router | **RADIUS Server IP** = the new address, then **Save** | Nobody can join the Wi-Fi |
-| Cloudflare → your domain → **DNS → Records** (step 12) | Edit the `wifi` record's **IPv4 address**; keep it **DNS only** | `https://wifi.riomar.dev` doesn't load |
+| Cloudflare → your domain → **DNS → Records** (step 12) | Edit the `wifi` record's **IPv4 address**; keep it **DNS only**. Not needed with step 13: the tunnel finds the server by itself | `https://wifi.riomar.dev` doesn't load |
 
 Nothing else changes: no rebuild or setup run, and devices keep their Wi-Fi settings without
 rejoining or trusting anything again. Some devices may keep using the old address for a few minutes
@@ -476,6 +575,9 @@ able to join, and `nslookup wifi.riomar.dev 1.1.1.1` should answer the new addre
   encrypted by WPA2-Enterprise, but on the wired network a sign-in could be read by someone sniffing
   it. With step 12, the portal is HTTPS-only. Either way, don't publish ports 80/443 to the internet,
   and never publish the portal container's own port 8080: it trusts the proxy's visitor-address headers.
+- **With step 13 the portal is on the internet** through Cloudflare. Use strong admin passwords, and
+  keep the tunnel's service at `proxy:8081`. The **tunnel token** (`tunnel/token`) lets anyone run
+  your tunnel: if it leaks, delete the tunnel in Cloudflare and make a new one.
 - **Wrong passwords:** 5 in a row lock that name from that device for 5 minutes. On Docker Desktop
   for Windows every visitor looks like the same address, so the lock applies to the name for
   everyone; on a Linux server it's per device.
@@ -505,5 +607,8 @@ able to join, and `nslookup wifi.riomar.dev 1.1.1.1` should answer the new addre
 | Certificate: "Not set up" | `letsencrypt/cloudflare.ini` or `letsencrypt/domain` is missing or empty. Check it isn't saved as `.ini.txt`. |
 | Certificate: Cloudflare authentication or "zone" error | The token is wrong, expired, or not allowed to edit DNS for that domain. Make a new one (step 12a). |
 | Certificate: "rateLimited" | Too many real attempts for that name. Wait (the message says until when); test with `--dry-run`. |
+| Offline page, but the server is on | `docker compose ps` shows `wifi-tunnel` Up? `docker compose logs tunnel` should show `Registered tunnel connection`; a token error means `tunnel/token` is wrong. The server needs internet access. |
+| Cloudflare "Error 1033" instead of the offline page | The tunnel is down and the Worker isn't deployed, or its route doesn't match the name (step 13c). |
+| "Too many redirects" through the tunnel | The tunnel's service URL is `proxy:80`; change it to `proxy:8081` (step 13b). |
 | Android still warns after step 12 | It kept the old settings: forget the network, then choose **Use system certificates** and enter the domain. |
 | Need the full login server trace | `docker compose stop radius`, then `docker run --rm -p 1812:1812/udp -v "$PWD/data:/mnt/local:ro" wifi-radius sh -c "sed 's/freeradius -f/freeradius -X/' /start.sh > /tmp/s && sh /tmp/s"`, try a login, Ctrl+C, `docker compose start radius`. |

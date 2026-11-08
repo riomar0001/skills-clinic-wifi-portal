@@ -22,6 +22,7 @@ Devices already connected stay connected.
 | `wifi-portal` | none (behind `wifi-proxy`) | Everyone: `http://<server>` (e.g. `http://192.168.0.60`), or `https://wifi.riomar.dev` with Let's Encrypt. One sign-in page: admins land in the admin portal, students and faculty in **My Wi-Fi**. |
 | `wifi-proxy` | TCP **80**, **443**, the network | Front door for the portal. HTTPS with the Let's Encrypt certificate when there is one (port 80 then redirects); plain HTTP on 80 otherwise. |
 | `wifi-certs` | none | Optional: gets and renews the Let's Encrypt certificate ([docs/SETUP.md, step 12](docs/SETUP.md#12-optional-a-publicly-trusted-certificate-lets-encrypt)). |
+| `wifi-tunnel` | none (outbound to Cloudflare) | Optional: serves the portal through a Cloudflare Tunnel, so a Worker (`fallback/`) can show an **offline page** when the server is down ([step 13](docs/SETUP.md#13-optional-an-offline-page-through-cloudflare-tunnel)). Puts the portal on the internet. |
 
 The portal keeps admins, Wi-Fi users, sessions, login history and an activity log in **SQLite**
 (Docker volume `portal-db`). It writes `data/users` for FreeRADIUS, which reloads within a few
@@ -110,7 +111,7 @@ devices. Mesh systems and ISP modems often lack Enterprise mode. See
 [docs/SETUP.md](docs/SETUP.md#using-another-router-or-more-than-one).
 
 **Changing the server's address later** is fine: update the router's **RADIUS Server IP** and the
-`wifi` DNS record in Cloudflare (if you use HTTPS). Nothing in the project needs changing. See
+`wifi` DNS record in Cloudflare (if you use HTTPS without the tunnel). Nothing in the project needs changing. See
 [docs/SETUP.md](docs/SETUP.md#changing-the-servers-address).
 
 ## Joining from a device
@@ -150,6 +151,8 @@ Setup: [docs/SETUP.md, step 12](docs/SETUP.md#12-optional-a-publicly-trusted-cer
 | `letsencrypt/` | Cloudflare token and domain for it. Private; not in Git. |
 | `data/letsencrypt/` | The Let's Encrypt certificate, when there is one. Used instead of `data/certs/server.pem`. |
 | `data/users` | Generated from the portal database. Don't edit by hand. |
+| `tunnel/` | Cloudflare Tunnel token (step 13). Private; not in Git. |
+| `fallback/` | Cloudflare Worker that shows the "portal offline" page; deployed with `npm run deploy`. |
 
 Back up the `data` folder and the portal database (portal → Server → Download backup).
 
