@@ -1,0 +1,11 @@
+// Fallback page for the portal when this server is down. Deploy: docs/SETUP.md, step 13.
+{
+  "name": "wifi-portal-fallback",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  // Change both if the portal uses another name. The DNS record must be proxied (the tunnel's is).
+  "routes": [{ "pattern": "wifi.riomar.dev/*", "zone_name": "riomar.dev" }],
+  "observability": { "enabled": true }
+}
