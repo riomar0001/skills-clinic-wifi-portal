@@ -47,6 +47,12 @@ def client(settings: Settings):
         yield c
 
 
+def person(username: str, password: str = "Sunflower-42", **extra) -> dict:
+    """A complete Wi-Fi user payload (ID, names, UMindanao email); override any field with extra."""
+    return {"username": username, "password": password, "first_name": "Test", "last_name": username.title(),
+            "email": f"{username}.test@umindanao.edu.ph", **extra}
+
+
 def setup_admin(client: TestClient, settings: Settings, username="boss", password="correct-horse-1"):
     code = settings.setup_code_file.read_text().strip()
     r = client.post("/api/auth/setup", json={"setup_code": code, "username": username, "password": password})

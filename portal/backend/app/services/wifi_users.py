@@ -7,8 +7,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import Conflict, InvalidInput, NotAuthenticated, NotFound, TooManyAttempts
-from app.core.passwords import (FULL_NAME_MAX, NOTE_MAX, check_username, check_wifi_password, clean_text,
-                                nt_hash)
+from app.core.passwords import (NOTE_MAX, check_email, check_name_part, check_username, check_wifi_password,
+                                clean_text, nt_hash)
+
+ID_LABEL = "Student ID / Faculty ID"
+EMAIL_TAKEN = "That UMindanao email already belongs to another Wi-Fi user."
 from app.db.models import WifiUser, now
 from app.repositories.activity import ActivityRepository
 from app.repositories.wifi_users import StatusFilter, WifiUserRepository
@@ -59,32 +62,47 @@ class WifiUserService:
     def get(self, username: str) -> WifiUser:
         user = self.users.get(username)
         if user is None:
-            raise NotFound(f"No Wi-Fi user named '{username}'.")
+            raise NotFound(f"No Wi-Fi user with ID '{username}'.")
         return user
 
-    def create(self, actor: str, username: str, password: str, full_name: str = "", note: str = "",
-               expires_at: int | None = None) -> WifiUser:
-        check_username(username)
+    def create(self, actor: str, username: str, password: str, first_name: str, last_name: str, email: str,
+               note: str = "", expires_at: int | None = None) -> WifiUser:
+        """username is the person's Student ID or Faculty ID."""
+        username = (username or "").strip().lower()
+        check_username(username, ID_LABEL)
         user = WifiUser(
             username=username,
-            full_name=clean_text(full_name, "Full name", FULL_NAME_MAX),
+            first_name=check_name_part(first_name, "First name"),
+            last_name=check_name_part(last_name, "Last name"),
+            email=check_email(email),
             note=clean_text(note, "Note", NOTE_MAX),
             nt_hash=nt_hash(password),
             enabled=True,
             expires_at=check_expiry(expires_at),
         )
         if self.users.get(username) is not None:
-            raise Conflict(f"'{username}' already exists.")
+            raise Conflict(f"A Wi-Fi user with ID '{username}' already exists.")
+        if self.users.get_by_email(user.email) is not None:
+            raise Conflict(EMAIL_TAKEN)
         self.users.add(user)
         self.activity.add(actor, "wifi.create", username)
-        self._commit(f"'{username}' already exists.", radius_changed=True)
+        self._commit(f"A Wi-Fi user with ID '{username}' or that email already exists.", radius_changed=True)
         return user
 
-    def update(self, actor: str, username: str, *, full_name: str | None = None, note: str | None = None,
-               enabled: bool | None = None, expires_at: int | None | _Unset = UNSET) -> WifiUser:
+    def update(self, actor: str, username: str, *, first_name: str | None = None, last_name: str | None = None,
+               email: str | None = None, note: str | None = None, enabled: bool | None = None,
+               expires_at: int | None | _Unset = UNSET) -> WifiUser:
         user = self.get(username)
-        if full_name is not None:
-            user.full_name = clean_text(full_name, "Full name", FULL_NAME_MAX)
+        if first_name is not None:
+            user.first_name = check_name_part(first_name, "First name")
+        if last_name is not None:
+            user.last_name = check_name_part(last_name, "Last name")
+        if email is not None:
+            new_email = check_email(email)
+            other = self.users.get_by_email(new_email)
+            if other is not None and other.id != user.id:
+                raise Conflict(EMAIL_TAKEN)
+            user.email = new_email
         if note is not None:
             user.note = clean_text(note, "Note", NOTE_MAX)
         toggled = enabled is not None and enabled != user.enabled
@@ -102,7 +120,7 @@ class WifiUserService:
         else:
             action = "wifi.update"
         self.activity.add(actor, action, username)
-        self._commit("Could not save.", radius_changed=toggled or expiry_changed)
+        self._commit(EMAIL_TAKEN, radius_changed=toggled or expiry_changed)
         return user
 
     def set_password(self, actor: str, username: str, password: str) -> None:

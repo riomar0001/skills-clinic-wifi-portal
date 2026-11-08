@@ -23,8 +23,12 @@ class WifiUserRepository:
         stmt = select(WifiUser).order_by(WifiUser.username)
         if search:
             like = f"%{search.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')}%"
-            stmt = stmt.where(or_(WifiUser.username.ilike(like, escape="\\"),
-                                  WifiUser.full_name.ilike(like, escape="\\")))
+            # Only the part of the email up to "@": every address shares the domain, so matching
+            # it would turn searches like "ana" (as in umindanao) into "everyone".
+            email_local = func.substr(WifiUser.email, 1, func.instr(WifiUser.email, "@"))
+            stmt = stmt.where(or_(*(col.ilike(like, escape="\\") for col in (
+                WifiUser.username, WifiUser.first_name, WifiUser.last_name, email_local,
+                (WifiUser.first_name + " " + WifiUser.last_name)))))
         at = now()
         if status == "active":
             stmt = stmt.where(and_(WifiUser.enabled.is_(True), _not_expired(at)))
@@ -36,6 +40,9 @@ class WifiUserRepository:
 
     def get(self, username: str) -> WifiUser | None:
         return self.db.scalar(select(WifiUser).where(WifiUser.username == username))
+
+    def get_by_email(self, email: str) -> WifiUser | None:
+        return self.db.scalar(select(WifiUser).where(WifiUser.email == email))
 
     def add(self, user: WifiUser) -> None:
         self.db.add(user)

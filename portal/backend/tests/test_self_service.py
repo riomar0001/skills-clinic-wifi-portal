@@ -3,13 +3,13 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 from app.core.passwords import nt_hash
 from app.main import create_app
-from tests.conftest import PORTAL_HEADERS
+from tests.conftest import PORTAL_HEADERS, person
 
 URL = "/api/self-service/password"
 
 
 def _add_ana(admin_client):
-    r = admin_client.post("/api/wifi-users", json={"username": "ana", "password": "Sunflower-42"})
+    r = admin_client.post("/api/wifi-users", json=person("ana"))
     assert r.status_code == 201
 
 

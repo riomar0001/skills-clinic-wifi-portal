@@ -13,15 +13,35 @@ USERNAME_PATTERN = r"^[a-z0-9][a-z0-9._-]{0,31}$"
 _USERNAME_RE = re.compile(USERNAME_PATTERN)
 _WIFI_PASSWORD_RE = re.compile(r"^[\x20-\x7e]{8,64}$")
 ADMIN_PASSWORD_MIN, ADMIN_PASSWORD_MAX = 10, 128
-FULL_NAME_MAX, NOTE_MAX = 80, 300
+NOTE_MAX = 300
 PBKDF2_ITERATIONS = 600_000
 
 
-def check_username(name: str) -> str:
+EMAIL_DOMAIN = "umindanao.edu.ph"
+_EMAIL_RE = re.compile(r"^[a-z0-9][a-z0-9._%+-]{0,63}@" + re.escape(EMAIL_DOMAIN) + "$")
+NAME_PART_MAX = 60
+
+
+def check_username(name: str, label: str = "Username") -> str:
     if not isinstance(name, str) or not _USERNAME_RE.match(name):
-        raise InvalidInput("Username must be 1-32 characters: lowercase letters, digits, dot, dash "
+        raise InvalidInput(f"{label} must be 1-32 characters: lowercase letters, digits, dot, dash "
                            "or underscore, starting with a letter or digit.")
     return name
+
+
+def check_email(email: str) -> str:
+    """A UMindanao address, stored in lowercase."""
+    email = (email or "").strip().lower()
+    if not _EMAIL_RE.match(email):
+        raise InvalidInput(f"Email must be a UMindanao address ending in @{EMAIL_DOMAIN}.")
+    return email
+
+
+def check_name_part(value: str | None, field: str) -> str:
+    value = clean_text(value, field, NAME_PART_MAX)
+    if not value:
+        raise InvalidInput(f"{field} is required.")
+    return value
 
 
 def clean_text(value: str | None, field: str, limit: int) -> str:

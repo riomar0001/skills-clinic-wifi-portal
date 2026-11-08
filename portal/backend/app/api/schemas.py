@@ -35,8 +35,10 @@ class SetupIn(_In):
 # ----- Wi-Fi users -----
 
 class WifiUserOut(_Out):
-    username: str
-    full_name: str
+    username: str  # Student ID / Faculty ID
+    first_name: str
+    last_name: str
+    email: str | None
     note: str
     enabled: bool
     expires_at: int | None
@@ -54,15 +56,19 @@ Expiry = Annotated[int, Field(strict=True, ge=0, le=2**40)]
 
 
 class WifiUserCreateIn(_In):
-    username: str = Field(max_length=64)
+    username: str = Field(max_length=64)  # Student ID / Faculty ID
     password: str = Field(max_length=200)
-    full_name: str = Field(default="", max_length=200)
+    first_name: str = Field(max_length=200)
+    last_name: str = Field(max_length=200)
+    email: str = Field(max_length=300)
     note: str = Field(default="", max_length=600)
     expires_at: Expiry | None = None
 
 
 class WifiUserUpdateIn(_In):
-    full_name: str | None = Field(default=None, max_length=200)
+    first_name: str | None = Field(default=None, max_length=200)
+    last_name: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, max_length=300)
     note: str | None = Field(default=None, max_length=600)
     enabled: bool | None = None
     expires_at: Expiry | None = None  # send null to remove the expiry; leave out to keep it

@@ -2,7 +2,7 @@
 
 import time
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy import Boolean, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -34,10 +34,15 @@ class AdminSession(Base):
 
 class WifiUser(Base):
     __tablename__ = "wifi_users"
+    __table_args__ = (UniqueConstraint("email", name="uq_wifi_users_email"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(32), unique=True)
-    full_name: Mapped[str] = mapped_column(String(80), default="")
+    # username is the person's Student ID or Faculty ID; it's what they type to join the Wi-Fi.
+    first_name: Mapped[str] = mapped_column(String(60), default="", server_default="")
+    last_name: Mapped[str] = mapped_column(String(60), default="", server_default="")
+    # UMindanao email; None only for accounts created before emails were collected.
+    email: Mapped[str | None] = mapped_column(String(254), nullable=True, default=None)
     note: Mapped[str] = mapped_column(String(300), default="")
     nt_hash: Mapped[str] = mapped_column(String(32))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)

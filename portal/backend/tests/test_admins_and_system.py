@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 from app.main import create_app
 from app.services.radius_health import ACCESS_REJECT, RadiusHealthChecker
-from tests.conftest import PORTAL_HEADERS, SECRET
+from tests.conftest import PORTAL_HEADERS, SECRET, person
 
 
 def test_admin_management(admin_client):
@@ -78,7 +78,7 @@ def test_radius_health_reports_down(settings: Settings):
 
 
 def test_dashboard(admin_client):
-    admin_client.post("/api/wifi-users", json={"username": "ana", "password": "Sunflower-42"})
+    admin_client.post("/api/wifi-users", json=person("ana"))
     d = admin_client.get("/api/dashboard").json()
     assert (d["wifi_total"], d["wifi_active"], d["wifi_expired"], d["admins"]) == (1, 1, 0, 1)
     assert d["certificate"]["name"] == "wifi.test.local"

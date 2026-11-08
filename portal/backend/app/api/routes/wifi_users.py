@@ -20,8 +20,8 @@ def list_users(_: CurrentAdminDep, service: WifiServiceDep,
 
 @router.post("", response_model=WifiUserOut, status_code=201)
 def create_user(body: WifiUserCreateIn, current: CurrentAdminDep, service: WifiServiceDep):
-    return service.create(current.admin.username, body.username.strip(), body.password,
-                          body.full_name, body.note, expires_at=body.expires_at)
+    return service.create(current.admin.username, body.username, body.password, first_name=body.first_name,
+                          last_name=body.last_name, email=body.email, note=body.note, expires_at=body.expires_at)
 
 
 @router.get("/{username}", response_model=WifiUserOut)
@@ -32,8 +32,8 @@ def get_user(username: Username, _: CurrentAdminDep, service: WifiServiceDep):
 @router.patch("/{username}", response_model=WifiUserOut)
 def update_user(username: Username, body: WifiUserUpdateIn, current: CurrentAdminDep, service: WifiServiceDep):
     expiry = body.expires_at if "expires_at" in body.model_fields_set else UNSET
-    return service.update(current.admin.username, username, full_name=body.full_name, note=body.note,
-                          enabled=body.enabled, expires_at=expiry)
+    return service.update(current.admin.username, username, first_name=body.first_name, last_name=body.last_name,
+                          email=body.email, note=body.note, enabled=body.enabled, expires_at=expiry)
 
 
 @router.put("/{username}/password", status_code=204)
