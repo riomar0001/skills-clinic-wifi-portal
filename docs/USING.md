@@ -141,6 +141,19 @@ password. A Wi-Fi user's sign-in never opens admin pages.
 
 Change your own password from the user menu (bottom left) → **Change password**.
 
+### Make a Wi-Fi user an admin
+
+On their page (**Wi-Fi users** → the person) → **Admin access → Make admin**. Keep or type an admin
+password (at least 10 characters), then **Make admin**, and give them the password shown: it isn't
+shown again. They get an admin account with the same ID:
+
+- Their **admin password** opens the admin portal; their **Wi-Fi password** still opens My Wi-Fi and
+  their devices keep working.
+- If they later change their admin password, their Wi-Fi password changes to match
+  ([below](#an-admin-who-also-uses-the-wi-fi)).
+- To take admin access away, remove them on the **Admins** page; their Wi-Fi account stays. Changing
+  their Student/Faculty ID or deleting their Wi-Fi account doesn't change the admin account.
+
 ### Forgot an admin password
 
 On the server:
