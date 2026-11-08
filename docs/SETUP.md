@@ -220,6 +220,36 @@ Open **Wi-Fi users**, search by name, ID or email, and click a person. On their 
 | Replace a forgotten password | **Reset password**. The new one is shown once. |
 | Remove them for good | **Delete user**. |
 | See if their phone is reaching the Wi-Fi | **Recent connections**: each attempt, accepted or refused, with the device's address. |
+| Limit how many devices they use | **Device limit**: no limit, or 1 to 10. New users get 2. |
+| Let them switch to a new phone | **Devices → Remove** the old one. The next new device to join takes its place. |
+
+### How the device limit works
+
+- The first devices to join with an account are **registered**, up to the limit. The **Devices**
+  card shows them with when each was first and last seen.
+- Once the limit is reached, a different device is **refused**, even with the right password.
+  Registered devices keep working.
+- Devices are recognized by their Wi-Fi address (MAC). Most phones use a **different private
+  address for each network**, which stays the same for this Wi-Fi, so that's fine. If a phone is
+  set to change its address every time it joins, it counts as a new device; turn that off for
+  this network (Android: *Privacy → Use device MAC* or *Per-network MAC*; iPhone: *Private Wi-Fi
+  Address → Fixed*).
+- The limit applies within about 5 seconds of a new device joining. Lowering the limit doesn't
+  remove registered devices; remove the extra ones yourself.
+
+### Add many people from a CSV file
+
+1. **Wi-Fi users → Import CSV.** Click **Template** for a sample file, or use your own class list.
+2. The first row names the columns: **Student ID** (or *Faculty ID*, *ID*), **First Name**,
+   **Last Name**, **UMindanao Email**, and optionally **Password**. Order doesn't matter and extra
+   columns are ignored. Leave Password empty to have one made up.
+   In Excel use **File → Save As → CSV UTF-8**. Up to 1000 people and 1 MB per file.
+3. Choose the **expiry** and **device limit** for everyone in the file.
+4. **Check file.** Nothing is added yet. Rows with problems (wrong email domain, an ID that
+   already exists, the same person twice, a short password) are listed with their line number.
+   Fix them in the file and choose it again. **Nobody is added until every row is valid.**
+5. **Add N users**, then **Download passwords (CSV)**. The passwords are shown only this once;
+   share each one with its owner only, and delete the downloaded file when done.
 
 The list's **Active / Expired / Disabled** tabs and the dashboard counts show who can join right now.
 **Activity** records who changed what.
@@ -231,7 +261,7 @@ password** on the same page admins use, and can:
 
 - see whether their access is active, when it ends, and when they last connected;
 - update their first name, last name and UMindanao email (not their ID);
-- see their **connection history** (last 90 days);
+- see their **connection history** (last 90 days) and their registered **devices**;
 - **change their password**. This is optional, never required. The page warns that their device may
   drop off the Wi-Fi and will need the new password, and asks them to confirm.
 
@@ -284,6 +314,20 @@ login server's user list from the restored database when it starts.
 3. Restore the database backup (above).
 4. Give the new machine a fixed address (step 6) and change **RADIUS Server IP** in the router (step 8).
 5. Stop the old one: `docker compose down` in its project folder.
+
+## Security notes
+
+- **The portal uses plain HTTP.** On the Wi-Fi, each person's traffic is encrypted by WPA2-Enterprise,
+  but on the wired network a sign-in could be read by someone sniffing it. Keep the server on a
+  network only staff can plug into, and don't publish port 8080 to the internet.
+- **Wrong passwords:** 5 in a row lock that name from that device for 5 minutes. On Docker Desktop
+  for Windows every visitor looks like the same address, so the lock applies to the name for
+  everyone; on a Linux server it's per device.
+- **Windows firewall:** Docker Desktop's rule allows every port. Set the server's network to
+  **Private** (Settings → Network → Ethernet → Network profile) so it isn't exposed on public networks.
+- **Router:** change the TP-Link's admin password from the default, keep WPS off, and keep the
+  router secret private: anyone with it could ask the login server to check passwords.
+- **Backups and the `data` folder** contain password hashes and the certificate's private key.
 
 ## Troubleshooting
 

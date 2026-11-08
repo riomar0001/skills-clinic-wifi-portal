@@ -52,6 +52,10 @@ Then open **http://localhost:8080**. The first admin needs the one-time code in
   their ID, disable, reset passwords, delete. The password is shown once, to pass on to the person.
   Each user's page shows their **recent connections**: when their devices tried to join, accepted
   or refused, and the device.
+- **Device limit:** each account can be limited to a number of devices (default 2). The first ones
+  to join are registered; others are refused until an admin removes one.
+- **Import CSV:** add a whole class list at once. The file is checked first and nobody is added
+  unless every row is valid; generated passwords can be downloaded once.
 - **Expiry** is enforced by FreeRADIUS itself: after that moment the login is refused, even if the
   portal is stopped.
 - **Admins:** add and remove admins; change your own password from the user menu.
