@@ -64,7 +64,7 @@ export function DashboardPage() {
         <StatCard label="Disabled" value={d.wifi_disabled} icon={UserX} to="/wifi-users?status=disabled" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid items-start gap-6 lg:grid-cols-5">
         <div className="grid content-start gap-6 lg:col-span-2">
           <Card>
             <CardHeader>

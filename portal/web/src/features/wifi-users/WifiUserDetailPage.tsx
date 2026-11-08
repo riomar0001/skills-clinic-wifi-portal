@@ -164,7 +164,7 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid items-start gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <form onSubmit={saveDetails} className="contents">
             <CardHeader>
