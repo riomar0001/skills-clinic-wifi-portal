@@ -30,8 +30,12 @@ passwords lock a username for five minutes.
 
 ## First-time setup
 
+**Step by step, with Docker install, first admin, router, backups and troubleshooting:
+[docs/SETUP.md](docs/SETUP.md).** The short version:
+
 ```powershell
-.\setup.ps1
+.\setup.ps1        # Windows
+sh setup.sh        # Linux
 ```
 
 This creates the certificate (valid until 2036), the router secret and starts both containers.
