@@ -323,8 +323,10 @@ login server's user list from the restored database when it starts.
 - **Wrong passwords:** 5 in a row lock that name from that device for 5 minutes. On Docker Desktop
   for Windows every visitor looks like the same address, so the lock applies to the name for
   everyone; on a Linux server it's per device.
-- **Windows firewall:** Docker Desktop's rule allows every port. Set the server's network to
-  **Private** (Settings → Network → Ethernet → Network profile) so it isn't exposed on public networks.
+- **Windows firewall:** Docker Desktop's rule ("Docker Desktop Backend") allows any port on networks
+  set to **Public**, but only the ports Docker publishes (8080 and 1812 here) are listening, so
+  that's all it exposes. If you switch the server's network to **Private**, that rule no longer
+  applies: add inbound rules for TCP 8080 and UDP 1812, or logins and the portal stop working.
 - **Router:** change the TP-Link's admin password from the default, keep WPS off, and keep the
   router secret private: anyone with it could ask the login server to check passwords.
 - **Backups and the `data` folder** contain password hashes and the certificate's private key.
