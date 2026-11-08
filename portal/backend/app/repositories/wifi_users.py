@@ -50,12 +50,10 @@ class WifiUserRepository:
     def delete(self, user: WifiUser) -> None:
         self.db.delete(user)
 
-    def enabled_credentials(self) -> list[tuple[str, str, int | None]]:
-        """(username, NT hash, expires_at) for every enabled user. Expired ones stay listed:
-        FreeRADIUS refuses them itself, so access ends on time even if nothing re-exports the file."""
-        stmt = (select(WifiUser.username, WifiUser.nt_hash, WifiUser.expires_at)
-                .where(WifiUser.enabled.is_(True)).order_by(WifiUser.username))
-        return [(name, h, exp) for name, h, exp in self.db.execute(stmt)]
+    def enabled_users(self) -> list[WifiUser]:
+        """Every enabled user. Expired ones stay listed: FreeRADIUS refuses them itself,
+        so access ends on time even if nothing re-exports the file."""
+        return list(self.db.scalars(select(WifiUser).where(WifiUser.enabled.is_(True)).order_by(WifiUser.username)))
 
     def counts(self) -> dict[str, int]:
         at = now()

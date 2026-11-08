@@ -1,0 +1,7 @@
+	#  Device limits (see the portal): make the device's MAC address available inside the PEAP
+	#  tunnel, in one format (AA-BB-CC-DD-EE-FF), so the users file can match it. A missing
+	#  address becomes an empty string, which never matches a device list (fail closed).
+	update request {
+		&Calling-Station-Id := "%{outer.request:Calling-Station-Id}"
+	}
+	rewrite_calling_station_id

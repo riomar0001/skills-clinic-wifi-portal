@@ -1,5 +1,7 @@
 """App factory. Run with: uvicorn --factory app.main:create_app"""
 
+import asyncio
+import contextlib
 import logging
 from contextlib import asynccontextmanager
 
@@ -37,6 +39,25 @@ def _startup(app: FastAPI, settings: Settings) -> None:
             SetupCode(settings).clear()
 
 
+IMPORT_INTERVAL_SECONDS = 5
+
+
+def _import_login_history_once(app: FastAPI, settings: Settings) -> None:
+    with app.state.session_factory() as db:
+        ConnectionLogService(db, settings).import_new()
+
+
+async def _import_login_history_forever(app: FastAPI, settings: Settings) -> None:
+    """Imports login history every few seconds, so new devices register (and device limits
+    take effect) even when nobody has the portal open."""
+    while True:
+        await asyncio.sleep(IMPORT_INTERVAL_SECONDS)
+        try:
+            await asyncio.to_thread(_import_login_history_once, app, settings)
+        except Exception:  # noqa: BLE001 - keep the loop alive; the next round retries, and it's logged
+            log.exception("Importing the Wi-Fi login history failed")
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or load_settings()
     engine = make_engine(settings.db_path)
@@ -44,8 +65,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         _startup(app, settings)
-        yield
-        engine.dispose()
+        importer = asyncio.create_task(_import_login_history_forever(app, settings))
+        try:
+            yield
+        finally:
+            importer.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await importer
+            engine.dispose()
 
     app = FastAPI(title="Wi-Fi Portal", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.settings = settings

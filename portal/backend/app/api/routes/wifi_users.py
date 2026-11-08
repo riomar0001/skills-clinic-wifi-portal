@@ -3,10 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query
 
 from app.api.deps import CurrentAdminDep, DbDep, SettingsDep, WifiServiceDep
-from app.api.schemas import (ConnectionOut, PasswordIn, StatusFilter, WifiUserCreateIn, WifiUserOut,
+from app.api.schemas import (ConnectionOut, DeviceOut, PasswordIn, StatusFilter, WifiUserCreateIn, WifiUserOut,
                              WifiUserUpdateIn)
-from app.services.connection_log import ConnectionLogService
 from app.core.passwords import USERNAME_PATTERN
+from app.services.connection_log import ConnectionLogService
 from app.services.wifi_users import UNSET
 
 router = APIRouter(prefix="/api/wifi-users", tags=["wifi-users"])
@@ -23,7 +23,8 @@ def list_users(_: CurrentAdminDep, service: WifiServiceDep,
 @router.post("", response_model=WifiUserOut, status_code=201)
 def create_user(body: WifiUserCreateIn, current: CurrentAdminDep, service: WifiServiceDep):
     return service.create(current.admin.username, body.username, body.password, first_name=body.first_name,
-                          last_name=body.last_name, email=body.email, note=body.note, expires_at=body.expires_at)
+                          last_name=body.last_name, email=body.email, note=body.note, expires_at=body.expires_at,
+                          device_limit=body.device_limit)
 
 
 @router.get("/{username}", response_model=WifiUserOut)
@@ -38,12 +39,25 @@ def user_connections(username: Username, _: CurrentAdminDep, service: WifiServic
     return ConnectionLogService(db, settings).for_user(username, limit)
 
 
+@router.get("/{username}/devices", response_model=list[DeviceOut])
+def user_devices(username: Username, _: CurrentAdminDep, service: WifiServiceDep, db: DbDep, settings: SettingsDep):
+    ConnectionLogService(db, settings).import_new()
+    return service.get(username).devices
+
+
+@router.delete("/{username}/devices/{device_id}", status_code=204)
+def remove_device(username: Username, device_id: Annotated[int, Path(ge=1)], current: CurrentAdminDep,
+                  service: WifiServiceDep):
+    service.remove_device(current.admin.username, username, device_id)
+
+
 @router.patch("/{username}", response_model=WifiUserOut)
 def update_user(username: Username, body: WifiUserUpdateIn, current: CurrentAdminDep, service: WifiServiceDep):
-    expiry = body.expires_at if "expires_at" in body.model_fields_set else UNSET
+    sent = body.model_fields_set
     return service.update(current.admin.username, username, new_username=body.username, first_name=body.first_name,
                           last_name=body.last_name, email=body.email, note=body.note, enabled=body.enabled,
-                          expires_at=expiry)
+                          expires_at=body.expires_at if "expires_at" in sent else UNSET,
+                          device_limit=body.device_limit if "device_limit" in sent else UNSET)
 
 
 @router.put("/{username}/password", status_code=204)

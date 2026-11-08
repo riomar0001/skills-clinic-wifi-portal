@@ -49,6 +49,17 @@ def check_expiry(expires_at: int | None) -> int | None:
     return expires_at
 
 
+MAX_DEVICE_LIMIT = 20
+
+
+def check_device_limit(limit: int | None) -> int | None:
+    if limit is None:
+        return None
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= MAX_DEVICE_LIMIT:
+        raise InvalidInput(f"Device limit must be between 1 and {MAX_DEVICE_LIMIT}, or no limit.")
+    return limit
+
+
 class WifiUserService:
     def __init__(self, db: Session, exporter: RadiusUsersExporter):
         self.db = db
@@ -66,7 +77,7 @@ class WifiUserService:
         return user
 
     def create(self, actor: str, username: str, password: str, first_name: str, last_name: str, email: str,
-               note: str = "", expires_at: int | None = None) -> WifiUser:
+               note: str = "", expires_at: int | None = None, device_limit: int | None = None) -> WifiUser:
         """username is the person's Student ID or Faculty ID."""
         username = (username or "").strip().lower()
         check_username(username, ID_LABEL)
@@ -79,6 +90,7 @@ class WifiUserService:
             nt_hash=nt_hash(password),
             enabled=True,
             expires_at=check_expiry(expires_at),
+            device_limit=check_device_limit(device_limit),
         )
         if self.users.get(username) is not None:
             raise Conflict(f"A Wi-Fi user with ID '{username}' already exists.")
@@ -91,7 +103,8 @@ class WifiUserService:
 
     def update(self, actor: str, username: str, *, new_username: str | None = None, first_name: str | None = None,
                last_name: str | None = None, email: str | None = None, note: str | None = None,
-               enabled: bool | None = None, expires_at: int | None | _Unset = UNSET) -> WifiUser:
+               enabled: bool | None = None, expires_at: int | None | _Unset = UNSET,
+               device_limit: int | None | _Unset = UNSET) -> WifiUser:
         user = self.get(username)
         renamed = False
         if new_username is not None:
@@ -122,6 +135,10 @@ class WifiUserService:
         expiry_changed = not isinstance(expires_at, _Unset) and expires_at != user.expires_at
         if expiry_changed:
             user.expires_at = check_expiry(expires_at)  # type: ignore[arg-type]
+        limit_changed = not isinstance(device_limit, _Unset) and device_limit != user.device_limit
+        if limit_changed:
+            user.device_limit = check_device_limit(device_limit)  # type: ignore[arg-type]
+            self.activity.add(actor, "wifi.device_limit", f"{user.username}: {device_limit or 'no limit'}"[:64])
         user.updated_at = now()
 
         if renamed:
@@ -132,16 +149,28 @@ class WifiUserService:
             action = "wifi.expiry_clear" if user.expires_at is None else "wifi.expiry"
         else:
             action = "wifi.update"
-        if toggled or expiry_changed or not renamed:
+        if toggled or expiry_changed or not (renamed or limit_changed):
             self.activity.add(actor, action, user.username)
         self._commit("A Wi-Fi user with that ID or email already exists.",
-                     radius_changed=toggled or expiry_changed or renamed)
+                     radius_changed=toggled or expiry_changed or renamed or limit_changed)
         return user
+
+    def remove_device(self, actor: str, username: str, device_id: int) -> None:
+        """Frees a device slot (e.g. a replaced phone). The device can register again only if a slot is free."""
+        user = self.get(username)
+        device = next((d for d in user.devices if d.id == device_id), None)
+        if device is None:
+            raise NotFound("That device isn't registered to this user.")
+        user.devices.remove(device)
+        self.activity.add(actor, "wifi.device_remove", f"{user.username}: {device.mac}"[:64])
+        self._commit("Could not save.", radius_changed=True)
 
     def set_password(self, actor: str, username: str, password: str) -> None:
         user = self.get(username)
         user.nt_hash = nt_hash(password)
         user.updated_at = now()
+        # Browsers signed in to My Wi-Fi with the old password are signed out.
+        WifiSessionRepository(self.db).delete_for_user(user.id)
         self.activity.add(actor, "wifi.password", username)
         self._commit("Could not save.", radius_changed=True)
 

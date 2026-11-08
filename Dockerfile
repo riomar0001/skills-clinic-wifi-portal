@@ -13,8 +13,13 @@ RUN set -eu; \
 
 # Log every Wi-Fi login attempt (accepted or refused) for the portal's connection history.
 COPY wifi-events.conf /etc/raddb/mods-enabled/wifi_events
+# Device limits: put the device's MAC (normalised) into the inner request before the users file is read.
+COPY device-check.unlang /tmp/device-check.unlang
 RUN set -eu; \
-    sed -i 's/\r$//' /etc/raddb/mods-enabled/wifi_events; \
+    sed -i 's/\r$//' /etc/raddb/mods-enabled/wifi_events /tmp/device-check.unlang; \
+    test "$(grep -c '^authorize {' /etc/raddb/sites-available/inner-tunnel)" = 1; \
+    sed -i '/^authorize {/r /tmp/device-check.unlang' /etc/raddb/sites-available/inner-tunnel; \
+    test "$(grep -c 'rewrite_calling_station_id' /etc/raddb/sites-available/inner-tunnel)" = 1; \
     sed -i '/^post-auth {/a\	wifi_event_accept' /etc/raddb/sites-available/inner-tunnel; \
     sed -i '/^\tPost-Auth-Type REJECT {/a\		wifi_event_reject' /etc/raddb/sites-available/inner-tunnel; \
     test "$(grep -c 'wifi_event_accept' /etc/raddb/sites-available/inner-tunnel)" = 1; \

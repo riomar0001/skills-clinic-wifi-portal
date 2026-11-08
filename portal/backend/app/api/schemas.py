@@ -44,6 +44,8 @@ class WifiUserOut(_Out):
     note: str
     enabled: bool
     expires_at: int | None
+    device_limit: int | None
+    device_count: int
     created_at: int
     updated_at: int
 
@@ -53,8 +55,16 @@ class WifiUserOut(_Out):
         return self.expires_at is not None and self.expires_at <= int(time.time())
 
 
+class DeviceOut(_Out):
+    id: int
+    mac: str
+    first_seen_at: int
+    last_seen_at: int
+
+
 # Unix seconds; strict so "123" or 1.5 aren't silently accepted.
 Expiry = Annotated[int, Field(strict=True, ge=0, le=2**40)]
+DeviceLimit = Annotated[int, Field(strict=True, ge=1, le=20)]
 
 
 class WifiUserCreateIn(_In):
@@ -65,6 +75,7 @@ class WifiUserCreateIn(_In):
     email: str = Field(max_length=300)
     note: str = Field(default="", max_length=600)
     expires_at: Expiry | None = None
+    device_limit: DeviceLimit | None = None  # None = no limit
 
 
 class WifiUserUpdateIn(_In):
@@ -75,6 +86,7 @@ class WifiUserUpdateIn(_In):
     note: str | None = Field(default=None, max_length=600)
     enabled: bool | None = None
     expires_at: Expiry | None = None  # send null to remove the expiry; leave out to keep it
+    device_limit: DeviceLimit | None = None  # send null for no limit; leave out to keep it
 
 
 class PasswordIn(_In):
@@ -90,8 +102,10 @@ class MeOut(_Out):
     email: str | None
     enabled: bool
     expires_at: int | None
+    device_limit: int | None
     created_at: int
     last_connected_at: int | None = None
+    devices: list[DeviceOut] = []
 
     @computed_field
     @property

@@ -3,7 +3,7 @@
 import time
 
 from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 def now() -> int:
@@ -48,11 +48,41 @@ class WifiUser(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     # After this moment FreeRADIUS refuses the login (Expiration attribute); None = never expires.
     expires_at: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    # How many devices may use this account; None = no limit. Devices register on their first login.
+    device_limit: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    devices: Mapped[list["WifiDevice"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True, lazy="selectin",
+        order_by="WifiDevice.first_seen_at")
     created_at: Mapped[int] = mapped_column(Integer, default=now)
     updated_at: Mapped[int] = mapped_column(Integer, default=now)
 
     def is_expired(self, at: int | None = None) -> bool:
         return self.expires_at is not None and self.expires_at <= (now() if at is None else at)
+
+    @property
+    def device_count(self) -> int:
+        return len(self.devices)
+
+    def allowed_devices(self) -> list[str] | None:
+        """MACs the login server should accept, or None for "any device".
+        Only restricted once the limit is reached; until then new devices may join and register."""
+        if self.device_limit is None or len(self.devices) < self.device_limit:
+            return None
+        return [d.mac for d in self.devices]
+
+
+class WifiDevice(Base):
+    """A phone or laptop that has logged in with a Wi-Fi account (registered on its first accepted login)."""
+
+    __tablename__ = "wifi_devices"
+    __table_args__ = (UniqueConstraint("wifi_user_id", "mac", name="uq_wifi_devices_user_mac"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    wifi_user_id: Mapped[int] = mapped_column(ForeignKey("wifi_users.id", ondelete="CASCADE"), index=True)
+    mac: Mapped[str] = mapped_column(String(17))  # AA-BB-CC-DD-EE-FF
+    first_seen_at: Mapped[int] = mapped_column(Integer, default=now)
+    last_seen_at: Mapped[int] = mapped_column(Integer, default=now)
+    user: Mapped[WifiUser] = relationship(back_populates="devices")
 
 
 class WifiUserSession(Base):
