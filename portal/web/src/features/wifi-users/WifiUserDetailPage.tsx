@@ -19,7 +19,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { describeExpiry, userStatus } from '@/lib/expiry'
 import { formatDateTime } from '@/lib/format'
-import { generatePassword } from '@/lib/password'
+import { USERNAME_HINT, USERNAME_PATTERN, generatePassword } from '@/lib/password'
 import { EMAIL_DOMAIN, EMAIL_HINT, EMAIL_PATTERN, ID_LABEL, fullName } from '@/lib/person'
 import { cn } from '@/lib/utils'
 import { useDeleteWifiUser, useSetWifiPassword, useUpdateWifiUser, useWifiUser, useWifiUserConnections } from './api'
@@ -118,6 +118,7 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
   const setPassword = useSetWifiPassword(user.username)
   const remove = useDeleteWifiUser()
 
+  const [studentId, setStudentId] = useState(user.username)
   const [firstName, setFirstName] = useState(user.first_name)
   const [lastName, setLastName] = useState(user.last_name)
   const [email, setEmail] = useState(user.email ?? '')
@@ -128,9 +129,12 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmDisable, setConfirmDisable] = useState(false)
 
-  const dirty = firstName.trim() !== user.first_name || lastName.trim() !== user.last_name
+  const newId = studentId.trim().toLowerCase()
+  const idChanged = newId !== user.username
+  const dirty = idChanged || firstName.trim() !== user.first_name || lastName.trim() !== user.last_name
     || email.trim().toLowerCase() !== (user.email ?? '') || note.trim() !== user.note
   const discard = () => {
+    setStudentId(user.username)
     setFirstName(user.first_name)
     setLastName(user.last_name)
     setEmail(user.email ?? '')
@@ -139,8 +143,15 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
 
   const saveDetails = (e: FormEvent) => {
     e.preventDefault()
-    update.mutate({ first_name: firstName, last_name: lastName, note, ...(email.trim() ? { email: email.trim() } : {}) }, {
-      onSuccess: () => toast.success('Details saved'),
+    update.mutate({
+      ...(idChanged ? { username: newId } : {}),
+      first_name: firstName, last_name: lastName, note,
+      ...(email.trim() ? { email: email.trim() } : {}),
+    }, {
+      onSuccess: (saved) => {
+        toast.success(idChanged ? `ID changed to ${saved.username}. Their Wi-Fi username is now ${saved.username}.` : 'Details saved')
+        if (saved.username !== user.username) navigate(`/wifi-users/${encodeURIComponent(saved.username)}`, { replace: true })
+      },
       onError: (err) => toast.error(errorMessage(err)),
     })
   }
@@ -199,11 +210,15 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
           <form onSubmit={saveDetails} className="contents">
             <CardHeader>
               <CardTitle>Details</CardTitle>
-              <CardDescription>The ID can’t be changed: it’s their Wi-Fi username. The note is only for admins.</CardDescription>
+              <CardDescription>The note is only for admins.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5">
-              <FormField label={ID_LABEL}>
-                <Input value={user.username} readOnly disabled className="font-mono" />
+              <FormField label={ID_LABEL} hint={idChanged
+                ? 'This also changes their Wi-Fi username: their devices will need the new ID to join.'
+                : 'Also their Wi-Fi username.'}>
+                <Input value={studentId} onChange={(e) => setStudentId(e.target.value.toLowerCase())} className="font-mono"
+                  autoComplete="off" autoCapitalize="none" spellCheck={false} pattern={USERNAME_PATTERN} title={USERNAME_HINT}
+                  maxLength={32} required />
               </FormField>
               <div className="grid gap-5 sm:grid-cols-2">
                 <FormField label="First name">
