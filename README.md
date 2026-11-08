@@ -5,10 +5,10 @@ their device asks for a **username and password**, and the router checks it with
 (FreeRADIUS) running in Docker on an always-on machine.
 
 ```
-phone ──Wi-Fi──> TL-WR840N ──WAN port──> modem (192.168.0.1) <──Ethernet── server PC (192.168.0.60)
-                 192.168.0.83    "is ana / ****** ok?" ──UDP 1812──>  wifi-radius   (FreeRADIUS)
-                                                                       wifi-proxy    (:80, :443)
-                                                                        └ wifi-portal (portal)
+phone ──Wi-Fi──> TL-WR840N (192.168.1.1) ──LAN cable──> server PC (192.168.1.101)
+                 "is ana / ****** ok?" ──UDP 1812──>  wifi-radius   (FreeRADIUS)
+                                                      wifi-proxy    (:80, :443)
+                                                       └ wifi-portal (portal)
 ```
 
 **The server must stay on with Docker running.** If it is off, nobody new can join the Wi-Fi.
@@ -19,10 +19,10 @@ Devices already connected stay connected.
 | Container | Port | Who uses it |
 |---|---|---|
 | `wifi-radius` | UDP **1812** | The router, to check logins. Also records every login attempt. |
-| `wifi-portal` | none (behind `wifi-proxy`) | Everyone: `http://<server>` (e.g. `http://192.168.0.60`), or `https://wifi.riomar.dev` with Let's Encrypt. One sign-in page: admins land in the admin portal, students and faculty in **My Wi-Fi**. |
+| `wifi-portal` | none (behind `wifi-proxy`) | Everyone: `http://<server>` (e.g. `http://192.168.1.101`), or `https://wifi.riomar.dev` with Let's Encrypt. One sign-in page: admins land in the admin portal, students and faculty in **My Wi-Fi**. |
 | `wifi-proxy` | TCP **80**, **443**, the network | Front door for the portal. HTTPS with the Let's Encrypt certificate when there is one (port 80 then redirects); plain HTTP on 80 otherwise. |
-| `wifi-certs` | none | Optional: gets and renews the Let's Encrypt certificate ([docs/SETUP.md, step 12](docs/SETUP.md#12-optional-a-publicly-trusted-certificate-lets-encrypt)). |
-| `wifi-tunnel` | none (outbound to Cloudflare) | Optional: serves the portal through a Cloudflare Tunnel, so a Worker (`fallback/`) can show an **offline page** when the server is down ([step 13](docs/SETUP.md#13-optional-an-offline-page-through-cloudflare-tunnel)). Puts the portal on the internet. |
+| `wifi-certs` | none | Optional: gets and renews the Let's Encrypt certificate ([docs/SETUP.md, step 11](docs/SETUP.md#11-optional-a-publicly-trusted-certificate-lets-encrypt)). |
+| `wifi-tunnel` | none (outbound to Cloudflare) | Optional: serves the portal through a Cloudflare Tunnel, so a Worker (`fallback/`) can show an **offline page** when the server is down ([step 12](docs/SETUP.md#12-optional-an-offline-page-through-cloudflare-tunnel)). Puts the portal on the internet. |
 
 The portal keeps admins, Wi-Fi users, sessions, login history and an activity log in **SQLite**
 (Docker volume `portal-db`). It writes `data/users` for FreeRADIUS, which reloads within a few
@@ -34,8 +34,9 @@ passwords lock a username for five minutes.
 
 ## First-time setup
 
-**Step by step, with Docker install, first admin, router, backups and troubleshooting:
-[docs/SETUP.md](docs/SETUP.md).** The short version:
+**Step by step, from Docker install to the first phone joining: [docs/SETUP.md](docs/SETUP.md).**
+After that, [docs/USING.md](docs/USING.md) covers day-to-day use and
+[docs/MAINTENANCE.md](docs/MAINTENANCE.md) covers backups, moves and troubleshooting. The short version:
 
 ```powershell
 .\setup.ps1        # Windows
@@ -80,14 +81,14 @@ docker exec -it wifi-portal python -m app.cli add-wifi-user --id 123456 --first 
 
 ## My Wi-Fi (students and faculty)
 
-Share `http://<server address>` (e.g. `http://192.168.0.60`). People sign in with their
+Share `http://<server address>` (e.g. `http://192.168.1.101`). People sign in with their
 Student/Faculty ID and Wi-Fi password, on the same page admins use, to see their access and
 connection history, update their name and email, and (optionally) change their password. Details
-in [docs/SETUP.md](docs/SETUP.md#11-my-wi-fi-for-students-and-faculty).
+in [docs/USING.md](docs/USING.md#my-wi-fi-for-students-and-faculty).
 
 An admin can also have a Wi-Fi account with the same name. Changing the admin password sets that
 Wi-Fi password too, so one password works for both. Admin accounts are checked first, so that
-password opens the admin portal ([details](docs/SETUP.md#an-admin-who-also-uses-the-wi-fi)).
+password opens the admin portal ([details](docs/USING.md#an-admin-who-also-uses-the-wi-fi)).
 
 ## Router setup (once)
 
@@ -96,24 +97,23 @@ In `http://192.168.1.1`:
 1. **WPS → Disable WPS.** Enterprise mode doesn't work with WPS on.
 2. **Wireless → Wireless Security → WPA/WPA2 - Enterprise**
    - Version **WPA2**, Encryption **AES**
-   - RADIUS Server IP: the server's address (**192.168.0.60** here)
+   - RADIUS Server IP: the server's address (**192.168.1.101** here)
    - RADIUS Server Port: **1812**
    - RADIUS Server Password: the router secret (portal → Server → **Show secret**)
    - Save. Everyone on the Wi-Fi must rejoin with their own username and password.
 
-**Keep addresses fixed.** In the modem's DHCP settings, reserve **192.168.0.60** for the server
-(MAC `XX-XX-XX-XX-XX-XX`, from `ipconfig /all`) and **192.168.0.83** for the router's WAN side
-(MAC `XX:XX:XX:XX:XX:XX`, on the router's **Status** page).
+**Keep the server's address fixed.** In the router's **DHCP → Address Reservation**, reserve
+**192.168.1.101** for the server's Ethernet MAC (`XX-XX-XX-XX-XX-XX`, from `ipconfig /all`).
 
 **Other routers work too.** Any router or access point with **WPA2-Enterprise** (802.1X) and a
 RADIUS server setting can replace or join the TL-WR840N, with the same settings and the network
 name **CCE Skills Clinic WiFi**. Several routers can share one server for more coverage and more
 devices. Mesh systems and ISP modems often lack Enterprise mode. See
-[docs/SETUP.md](docs/SETUP.md#using-another-router-or-more-than-one).
+[docs/MAINTENANCE.md](docs/MAINTENANCE.md#using-another-router-or-more-than-one).
 
 **Changing the server's address later** is fine: update the router's **RADIUS Server IP** and the
 `wifi` DNS record in Cloudflare (if you use HTTPS without the tunnel). Nothing in the project needs changing. See
-[docs/SETUP.md](docs/SETUP.md#changing-the-servers-address).
+[docs/MAINTENANCE.md](docs/MAINTENANCE.md#changing-the-servers-address).
 
 ## Joining from a device
 
@@ -133,7 +133,7 @@ To remove the prompt on Android, the optional `wifi-certs` container gets a free
 certificate for a domain on Cloudflare (e.g. `wifi.riomar.dev`) and renews it automatically.
 Android then connects with "Use system certificates" and the domain name. iPhones, Macs and Windows
 still ask once (and may ask again after a renewal), unless they get a configuration profile.
-Setup: [docs/SETUP.md, step 12](docs/SETUP.md#12-optional-a-publicly-trusted-certificate-lets-encrypt).
+Setup: [docs/SETUP.md, step 11](docs/SETUP.md#11-optional-a-publicly-trusted-certificate-lets-encrypt).
 
 ## Files
 
@@ -152,7 +152,7 @@ Setup: [docs/SETUP.md, step 12](docs/SETUP.md#12-optional-a-publicly-trusted-cer
 | `letsencrypt/` | Cloudflare token and domain for it. Private; not in Git. |
 | `data/letsencrypt/` | The Let's Encrypt certificate, when there is one. Used instead of `data/certs/server.pem`. |
 | `data/users` | Generated from the portal database. Don't edit by hand. |
-| `tunnel/` | Cloudflare Tunnel token (step 13). Private; not in Git. |
+| `tunnel/` | Cloudflare Tunnel token (setup step 12). Private; not in Git. |
 | `fallback/` | Cloudflare Worker that shows the "portal offline" page; deployed with `npm run deploy`. |
 
 Back up the `data` folder and the portal database (portal → Server → Download backup).

@@ -1,4 +1,4 @@
-// Fallback page for the portal when this server is down. Deploy: docs/SETUP.md, step 13.
+// Fallback page for the portal when this server is down. Deploy: docs/SETUP.md, step 12.
 {
   "name": "wifi-portal-fallback",
   "main": "src/index.js",

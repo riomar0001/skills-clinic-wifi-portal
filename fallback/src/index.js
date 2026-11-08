@@ -1,6 +1,6 @@
 // Cloudflare Worker in front of the portal (route wifi.riomar.dev/*). Passes every request through the
 // tunnel to this server; when the server can't answer, shows a friendly "offline" page instead of
-// Cloudflare's error. See docs/SETUP.md, step 13.
+// Cloudflare's error. See docs/SETUP.md, step 12.
 
 // 502/504: nginx is up but the portal isn't. 503: the portal is overloaded or restarting.
 // 520-524: Cloudflare couldn't get a usable answer. 530: the tunnel is down (error 1033): server off.
