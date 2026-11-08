@@ -35,8 +35,9 @@ export function ServerPage() {
         <CardHeader>
           <CardTitle>Certificate</CardTitle>
           <CardDescription>
-            Phones show this the first time they join. Tell people to check the name before tapping Trust. A different
-            name could mean someone is faking the network.
+            {cert.data?.trusted
+              ? 'Publicly trusted (Let’s Encrypt), renewed automatically. Android: CA certificate “Use system certificates”, domain as below. iPhone and Windows still ask once and show it as verified.'
+              : 'Phones show this the first time they join. Tell people to check the name before tapping Trust. A different name could mean someone is faking the network.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -58,6 +59,7 @@ export function ServerPage() {
             </dl>
           )}
         </CardContent>
+        {cert.data?.trusted === false && <>
         <Separator />
         <CardFooter className="flex-col items-start gap-3">
           <p className="text-sm text-muted-foreground">
@@ -73,6 +75,7 @@ export function ServerPage() {
             </Button>
           </div>
         </CardFooter>
+        </>}
       </Card>
 
       <div className="grid items-start gap-6 lg:grid-cols-2">

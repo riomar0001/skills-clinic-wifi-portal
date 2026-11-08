@@ -54,6 +54,11 @@ class Settings:
         return self.radius_dir / "certs"
 
     @property
+    def letsencrypt_dir(self) -> Path:
+        """Written by the optional certs container (publicly trusted certificate)."""
+        return self.radius_dir / "letsencrypt"
+
+    @property
     def setup_code_file(self) -> Path:
         return self.radius_dir / "setup-code.txt"
 

@@ -1,4 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
 import { CircleCheck, Info } from 'lucide-react'
+import { api } from '@/api/client'
+import type { Certificate } from '@/api/types'
 import { CopyButton } from '@/components/common/CopyButton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -23,6 +26,7 @@ function CredentialRow({ label, value }: { label: string; value: string }) {
 
 /** Shown once after creating a user or resetting a password; the portal can't show the password again. */
 export function CredentialsDialog({ credentials, onClose }: { credentials: Credentials | null; onClose: () => void }) {
+  const cert = useQuery({ queryKey: ['certificate'], queryFn: () => api.get<Certificate>('/api/certificate'), enabled: credentials !== null })
   return (
     <Dialog open={credentials !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
@@ -43,7 +47,12 @@ export function CredentialsDialog({ credentials, onClose }: { credentials: Crede
               <AlertDescription>
                 <ul className="list-disc space-y-1 pl-4">
                   <li><b>iPhone / Mac:</b> enter both, then tap <b>Trust</b>.</li>
-                  <li><b>Android:</b> EAP <b>PEAP</b>, Phase 2 <b>MSCHAPV2</b>, CA certificate <b>Trust on first use</b>.</li>
+                  <li>
+                    <b>Android:</b> EAP <b>PEAP</b>, Phase 2 <b>MSCHAPV2</b>,{' '}
+                    {cert.data?.trusted
+                      ? <>CA certificate <b>Use system certificates</b>, domain <b>{cert.data.name}</b>.</>
+                      : <>CA certificate <b>Trust on first use</b>.</>}
+                  </li>
                   <li><b>Windows:</b> enter both, then click <b>Connect</b>.</li>
                 </ul>
               </AlertDescription>

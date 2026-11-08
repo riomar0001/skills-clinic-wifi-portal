@@ -81,6 +81,8 @@ export interface Certificate {
   issuer: string
   expires_at: number
   sha256: string
+  /** Let's Encrypt: devices check it against their built-in list (Android: "Use system certificates"). */
+  trusted: boolean
 }
 
 export interface Dashboard {

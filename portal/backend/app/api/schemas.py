@@ -193,6 +193,7 @@ class CertificateOut(BaseModel):
     issuer: str
     expires_at: int
     sha256: str
+    trusted: bool  # Let's Encrypt: Android can use "system certificates" with this name as the domain
 
 
 class ConfirmPasswordIn(_In):
