@@ -85,8 +85,9 @@ Student/Faculty ID and Wi-Fi password, on the same page admins use, to see their
 connection history, update their name and email, and (optionally) change their password. Details
 in [docs/SETUP.md](docs/SETUP.md#11-my-wi-fi-for-students-and-faculty).
 
-An admin can also have a Wi-Fi account with the same name: admin accounts are checked first, so use
-different passwords to reach both areas ([details](docs/SETUP.md#an-admin-who-also-uses-the-wi-fi)).
+An admin can also have a Wi-Fi account with the same name. Changing the admin password sets that
+Wi-Fi password too, so one password works for both. Admin accounts are checked first, so that
+password opens the admin portal ([details](docs/SETUP.md#an-admin-who-also-uses-the-wi-fi)).
 
 ## Router setup (once)
 

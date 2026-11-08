@@ -137,11 +137,16 @@ That admin is signed out everywhere and uses the new password from then on.
 Admins and Wi-Fi users sign in on the same page, and **admin accounts are checked first**. If an
 admin account and a Wi-Fi account share the same name (for example your Student ID):
 
-- **Different passwords:** the admin password opens the admin portal, the Wi-Fi password opens My Wi-Fi.
+- **Changing the admin password changes the Wi-Fi password too** (from **Your account**, or with
+  `reset-admin`), so one password works for both. It must then also be a valid Wi-Fi password:
+  8-64 plain keyboard characters. Your devices ask for the new password the next time they join.
 - **Same password:** signing in always opens the admin portal. You can still see your Wi-Fi account
   there under **Wi-Fi users**, but not My Wi-Fi.
+- **Different passwords** (only if the Wi-Fi password is reset separately afterwards): the admin
+  password opens the admin portal, the Wi-Fi password opens My Wi-Fi.
 
-Either way, the Wi-Fi itself only uses the Wi-Fi account and password.
+The Wi-Fi itself only uses the Wi-Fi account and password. Changing a Wi-Fi password never changes
+the admin password.
 
 ## 6. Give the server a fixed address
 
