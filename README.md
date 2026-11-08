@@ -48,9 +48,10 @@ Then open **http://localhost:8080**. The first admin needs the one-time code in
 
 - **Wi-Fi users:** each person has a **Student ID / Faculty ID** (their Wi-Fi username), first and
   last name, and a **UMindanao email** (`@umindanao.edu.ph`). Add people with a generated password,
-  set an **expiry** (1 day, 1 week, 30 or 90 days, or an exact date), disable, reset passwords,
-  delete. The password is shown once, to pass on to the person. Each user's page shows their
-  **recent connections**: when their devices tried to join, accepted or refused, and the device.
+  set an **expiry** (searchable list from 1 hour to 90 days, or an exact date and time), change
+  their ID, disable, reset passwords, delete. The password is shown once, to pass on to the person.
+  Each user's page shows their **recent connections**: when their devices tried to join, accepted
+  or refused, and the device.
 - **Expiry** is enforced by FreeRADIUS itself: after that moment the login is refused, even if the
   portal is stopped.
 - **Admins:** add and remove admins; change your own password from the user menu.
@@ -65,22 +66,18 @@ Add a Wi-Fi user from the server's command line instead (the password is asked f
 the command line):
 
 ```powershell
-docker exec -it wifi-portal python -m app.cli add-wifi-user --id 484470 --first "Mario Jr" --last Inguito --email m.inguito.484470@umindanao.edu.ph
+docker exec -it wifi-portal python -m app.cli add-wifi-user --id 123456 --first Juan --last "Dela Cruz" --email j.delacruz.123456@umindanao.edu.ph
 ```
 
 ## My Wi-Fi (students and faculty)
 
 Share `http://<server address>:8080` (e.g. `http://192.168.0.60:8080`). People sign in with their
-Student/Faculty ID and Wi-Fi password, on the same page admins use, and can:
+Student/Faculty ID and Wi-Fi password, on the same page admins use, to see their access and
+connection history, update their name and email, and (optionally) change their password. Details
+in [docs/SETUP.md](docs/SETUP.md#11-my-wi-fi-for-students-and-faculty).
 
-- see whether their access is active, when it ends, and when they last connected;
-- update their first name, last name and UMindanao email;
-- see their **connection history** (last 90 days);
-- **change their password**. This is optional, never forced. The page warns them that their device
-  may drop off the Wi-Fi and will need the new password, and asks them to confirm.
-
-Disabled accounts can't sign in. Expired accounts can sign in to see why, but can't change their
-password. A Wi-Fi user's session can never open admin pages.
+An admin can also have a Wi-Fi account with the same name: admin accounts are checked first, so use
+different passwords to reach both areas ([details](docs/SETUP.md#an-admin-who-also-uses-the-wi-fi)).
 
 ## Router setup (once)
 

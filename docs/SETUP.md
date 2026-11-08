@@ -127,6 +127,17 @@ That admin is signed out everywhere and uses the new password from then on.
 > The sign-in page is reachable from the whole network, so use **strong admin passwords**. Five
 > wrong passwords lock a username for five minutes.
 
+### An admin who also uses the Wi-Fi
+
+Admins and Wi-Fi users sign in on the same page, and **admin accounts are checked first**. If an
+admin account and a Wi-Fi account share the same name (for example your Student ID):
+
+- **Different passwords:** the admin password opens the admin portal, the Wi-Fi password opens My Wi-Fi.
+- **Same password:** signing in always opens the admin portal. You can still see your Wi-Fi account
+  there under **Wi-Fi users**, but not My Wi-Fi.
+
+Either way, the Wi-Fi itself only uses the Wi-Fi account and password.
+
 ## 6. Give the server a fixed address
 
 The router finds the login server by its IP address, so that address must not change.
@@ -136,8 +147,9 @@ The router finds the login server by its IP address, so that address must not ch
    - Linux: `ip -4 addr` and `ip link`.
 2. In your **modem's** DHCP settings (or the router's, if the server is plugged into it), add an
    **address reservation** for that MAC address.
-3. Also reserve the address of the **TP-Link's WAN side** (shown on its Status page), so the login
-   server's firewall rules keep matching.
+
+If the server's address ever changes, Wi-Fi logins stop until you update **RADIUS Server IP** in the
+router (step 8).
 
 ## 7. Firewall
 
@@ -174,8 +186,13 @@ Add yourself as a Wi-Fi user **before** saving, or nobody can join (step 9).
 
 ## 9. Add Wi-Fi users and test
 
-1. Portal → **Wi-Fi users → Add Wi-Fi user**: Student/Faculty ID (their Wi-Fi username), first and
-   last name, UMindanao email, a password (use **Generate**), and optionally when access ends.
+1. Portal → **Wi-Fi users → Add Wi-Fi user**:
+   - **Student ID / Faculty ID**: their Wi-Fi username (lowercase letters, digits, `.`, `-`, `_`).
+   - **First name**, **last name**, and **UMindanao email** (must end in `@umindanao.edu.ph`; each
+     email can belong to only one person).
+   - **Password**: use **Generate** for an easy-to-type one, or type your own (8-64 characters).
+   - **Access expires**: **Never**, a length from **1 hour to 90 days** (type in the box to search,
+     e.g. `6h`, `2w`, `30`), or an exact date and time. After that moment the Wi-Fi refuses the login.
 2. Pass the ID and password on. The password is shown only once.
 3. On a phone, join the Wi-Fi:
    - **iPhone/Mac:** enter the ID and password, then tap **Trust**.
@@ -184,14 +201,42 @@ Add yourself as a Wi-Fi user **before** saving, or nobody can join (step 9).
    - **Windows:** enter the ID and password, then **Connect**.
 4. In the portal, the user's page shows the attempt under **Recent connections**.
 
-Students and faculty can then open `http://<server>:8080`, sign in with their ID and Wi-Fi
-password, and manage their own account in **My Wi-Fi**.
-
-You can also add Wi-Fi users from the command line:
+You can also add Wi-Fi users from the command line (it asks for the password):
 
 ```bash
-docker exec -it wifi-portal python -m app.cli add-wifi-user --id 484470 --first "Mario Jr" --last Inguito --email m.inguito.484470@umindanao.edu.ph
+docker exec -it wifi-portal python -m app.cli add-wifi-user --id 123456 --first Juan --last "Dela Cruz" --email j.delacruz.123456@umindanao.edu.ph
 ```
+
+## 10. Managing Wi-Fi users
+
+Open **Wi-Fi users**, search by name, ID or email, and click a person. On their page:
+
+| To | Do this |
+|---|---|
+| Fix their name, email or note | **Details**, then **Save changes**. |
+| Change their **Student/Faculty ID** | Edit the ID in **Details** and save. It is also their Wi-Fi username, so their devices need the new ID to join; the old ID stops working at once. Their connection history moves to the new ID. |
+| Block them right away | Turn off **Wi-Fi access**. Devices already connected stay on until they reconnect. |
+| Give access for a limited time | **Expires → Set/Change**: 1 hour to 90 days, or an exact date and time. **Never** removes the limit. |
+| Replace a forgotten password | **Reset password**. The new one is shown once. |
+| Remove them for good | **Delete user**. |
+| See if their phone is reaching the Wi-Fi | **Recent connections**: each attempt, accepted or refused, with the device's address. |
+
+The list's **Active / Expired / Disabled** tabs and the dashboard counts show who can join right now.
+**Activity** records who changed what.
+
+## 11. My Wi-Fi (for students and faculty)
+
+Share `http://<server address>:8080`. People sign in with their **Student/Faculty ID** and **Wi-Fi
+password** on the same page admins use, and can:
+
+- see whether their access is active, when it ends, and when they last connected;
+- update their first name, last name and UMindanao email (not their ID);
+- see their **connection history** (last 90 days);
+- **change their password**. This is optional, never required. The page warns that their device may
+  drop off the Wi-Fi and will need the new password, and asks them to confirm.
+
+Disabled accounts can't sign in. Expired accounts can sign in to see why, but can't change their
+password. A Wi-Fi user's sign-in never opens admin pages.
 
 ---
 
