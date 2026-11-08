@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 SELF_SERVICE_PAGE = "/change-password"
 # The only things the network-facing self-service listener will serve.
 SELF_SERVICE_PREFIXES = ("/api/self-service/", "/assets/")
-SELF_SERVICE_PATHS = {SELF_SERVICE_PAGE, "/favicon.svg"}
+SELF_SERVICE_PATHS = {SELF_SERVICE_PAGE, "/favicon.png"}
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_HEADER = "x-requested-with"
