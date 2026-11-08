@@ -17,6 +17,15 @@ mkdir -p "$certs"
 # Made here so Docker doesn't create them owned by root; the token folder is private.
 mkdir -p letsencrypt "$data/letsencrypt"
 chmod 700 letsencrypt
+# Optional Cloudflare Tunnel: started only once tunnel/token exists. The folder is private; the file itself
+# must be readable because cloudflared runs as a non-root user inside its container.
+mkdir -p tunnel
+chmod 700 tunnel
+profiles=
+if [ -s tunnel/token ]; then
+    chmod 644 tunnel/token
+    profiles='--profile tunnel'
+fi
 
 # Certificates: phones remember this one, so it is created once and kept (valid 10 years).
 if [ ! -e "$certs/server.pem" ]; then
@@ -62,7 +71,8 @@ if [ "$(id -u)" != 1000 ]; then
     echo "Note: the portal container runs as UID 1000. If it can't write $data, run: sudo chown -R 1000:1000 $data"
 fi
 
-docker compose up -d --build
+# shellcheck disable=SC2086 # $profiles is empty or two words on purpose
+docker compose $profiles up -d --build
 
 echo
 echo 'Running:'
@@ -75,6 +85,7 @@ else
     echo '  Portal         http://<this machine>  (one sign-in for admins and Wi-Fi users)'
     echo '  Certificate    self-made (for a publicly trusted one, see docs/SETUP.md)'
 fi
+[ -n "$profiles" ] && echo '  Tunnel         Cloudflare Tunnel running (docker logs wifi-tunnel)'
 
 # The portal writes the first-admin setup code a few seconds after it starts.
 i=0

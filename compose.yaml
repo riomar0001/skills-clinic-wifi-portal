@@ -57,6 +57,24 @@ services:
       - ./data/letsencrypt:/out
       - letsencrypt-state:/etc/letsencrypt
 
+  # Optional Cloudflare Tunnel: the portal is reached through Cloudflare, which shows the fallback page
+  # (fallback/) while this server is down. Setup starts it only when tunnel/token exists. See docs/SETUP.md.
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.7
+    container_name: wifi-tunnel
+    restart: unless-stopped
+    profiles: [tunnel]
+    depends_on:
+      - proxy
+    # Goes to the proxy's internal port 8081, never straight to the portal (see proxy/start.sh).
+    command: tunnel --no-autoupdate run --token-file /run/secrets/tunnel_token
+    secrets:
+      - tunnel_token
+
+secrets:
+  tunnel_token:
+    file: ./tunnel/token
+
 volumes:
   portal-db:
   radius-events:
