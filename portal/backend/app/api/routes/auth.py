@@ -36,9 +36,10 @@ def setup(body: SetupIn, response: Response, auth: AuthServiceDep, settings: Set
 
 
 @router.post("/login", response_model=AuthStatus)
-def login(body: LoginIn, response: Response, auth: AuthServiceDep, settings: SettingsDep) -> AuthStatus:
+def login(body: LoginIn, request: Request, response: Response, auth: AuthServiceDep,
+          settings: SettingsDep) -> AuthStatus:
     """One page for everyone: an admin username or a Student/Faculty ID, with the matching password."""
-    token, identity = auth.login(body.username, body.password)
+    token, identity = auth.login(body.username, body.password, request.client.host if request.client else "")
     _set_session_cookie(response, token, settings)
     return _status(identity)
 

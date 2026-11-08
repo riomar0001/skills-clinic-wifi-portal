@@ -31,7 +31,11 @@ def test_login_logout_and_throttle(client, settings):
     r = client.post("/api/auth/login", json={"username": "boss", "password": "correct-horse-1"})
     assert r.status_code == 429  # locked even with the right password
 
-    client.app.state.throttle.succeeded("boss")
+    # The lock is per address: the real admin on another computer can still sign in.
+    other = TestClient(client.app, headers=PORTAL_HEADERS, client=("192.168.0.50", 50000))
+    assert other.post("/api/auth/login", json={"username": "boss", "password": "correct-horse-1"}).status_code == 200
+
+    client.app.state.throttle.succeeded("boss|testclient")
     r = client.post("/api/auth/login", json={"username": "boss", "password": "correct-horse-1"})
     assert r.status_code == 200
     assert client.get("/api/wifi-users").status_code == 200

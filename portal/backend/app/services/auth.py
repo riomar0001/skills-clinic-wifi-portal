@@ -41,7 +41,7 @@ def _wifi_identity(user: WifiUser) -> Identity:
 
 
 class LoginThrottle:
-    """After 5 wrong passwords for a username, refuse that username for 5 minutes. In memory."""
+    """After 5 wrong passwords for a key (a name, or name|address at sign-in), refuse it for 5 minutes. In memory."""
 
     def __init__(self):
         self._lock = threading.Lock()
@@ -49,7 +49,7 @@ class LoginThrottle:
 
     @staticmethod
     def _key(username: str) -> str:
-        return (username or "").strip().lower()[:64]
+        return (username or "").strip().lower()[:130]
 
     def seconds_locked(self, username: str) -> int:
         with self._lock:
@@ -134,12 +134,15 @@ class AuthService:
         code.clear()
         return token
 
-    def login(self, username: str, password: str) -> tuple[str, Identity]:
+    def login(self, username: str, password: str, client: str = "") -> tuple[str, Identity]:
         """One sign-in page for everyone: admin accounts are checked first, then Wi-Fi users
-        (Student/Faculty ID + Wi-Fi password). Both checks always run, so timing doesn't reveal which exists."""
+        (Student/Faculty ID + Wi-Fi password). Both checks always run, so timing doesn't reveal which exists.
+        client is the caller's address: the lockout is per name *and* address, so someone guessing from their
+        own laptop can't lock the real admin out of the portal."""
         name = (username or "").strip()
         password = password or ""
-        if (wait := self.throttle.seconds_locked(name)) > 0:
+        throttle_key = f"{name[:64]}|{client[:64]}"
+        if (wait := self.throttle.seconds_locked(throttle_key)) > 0:
             raise TooManyAttempts(f"Too many wrong passwords. Try again in {wait // 60 + 1} minute(s).")
 
         admin = self.admins.get(name)
@@ -154,13 +157,13 @@ class AuthService:
         wifi_ok = bool(given) and hmac.compare_digest(given, stored) and wifi_user is not None and wifi_user.enabled
 
         if admin is not None and admin_ok:
-            self.throttle.succeeded(name)
+            self.throttle.succeeded(throttle_key)
             self.activity.add(admin.username, "admin.login", admin.username)
             return self._start_session(admin), Identity("admin", admin.username, admin.username)
         if wifi_ok:
-            self.throttle.succeeded(name)
+            self.throttle.succeeded(throttle_key)
             return self._start_wifi_session(wifi_user), _wifi_identity(wifi_user)
-        self.throttle.failed(name)
+        self.throttle.failed(throttle_key)
         raise NotAuthenticated("Wrong ID, username or password.")
 
     def identify(self, token: str | None) -> Identity | None:

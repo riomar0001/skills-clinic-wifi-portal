@@ -38,4 +38,4 @@ USER portal
 # One port for admins and Wi-Fi users.
 EXPOSE 8080
 CMD ["uvicorn", "--factory", "app.main:create_app", "--host", "0.0.0.0", "--port", "8080", \
-     "--no-server-header", "--timeout-keep-alive", "5", "--limit-concurrency", "100"]
+     "--no-server-header", "--no-proxy-headers", "--timeout-keep-alive", "5", "--limit-concurrency", "100"]
