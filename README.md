@@ -96,7 +96,8 @@ In `http://192.168.1.1`:
    - Save. Everyone on the Wi-Fi must rejoin with their own username and password.
 
 **Keep addresses fixed.** In the modem's DHCP settings, reserve **192.168.0.60** for the server
-(MAC `E4-A8-DF-BD-85-C9`) and **192.168.0.83** for the router's WAN side (MAC `60:83:E7:E3:B1:BB`).
+(MAC `XX-XX-XX-XX-XX-XX`, from `ipconfig /all`) and **192.168.0.83** for the router's WAN side
+(MAC `XX:XX:XX:XX:XX:XX`, on the router's **Status** page).
 
 ## Joining from a device
 
