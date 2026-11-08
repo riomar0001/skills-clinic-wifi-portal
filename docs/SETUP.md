@@ -226,6 +226,7 @@ Open **Wi-Fi users**, search by name, ID or email, and click a person. On their 
 | See if their phone is reaching the Wi-Fi | **Recent connections**: each attempt, accepted or refused, with the device's address. |
 | Limit how many devices they use | **Device limit**: no limit, or 1 to 10. New users get 2. |
 | Let them switch to a new phone | **Devices → Remove** the old one. The next new device to join takes its place. |
+| Help them join quickly | Show or print **Join with a QR code**. Scanning fills in the network (**CCE Skills Clinic WiFi**), PEAP / MSCHAPV2 and their ID; they type the password. Works on many Android phones; iPhones ignore Wi-Fi QR codes for this kind of network, so join from **Settings → Wi-Fi**. |
 
 ### How the device limit works
 
@@ -264,6 +265,7 @@ Share `http://<server address>`. People sign in with their **Student/Faculty ID*
 password** on the same page admins use, and can:
 
 - see whether their access is active, when it ends, and when they last connected;
+- scan their **Wi-Fi QR code** with another phone to join with their ID filled in (no password in it);
 - update their first name, last name and UMindanao email (not their ID);
 - see their **connection history** (last 90 days) and their registered **devices**;
 - **change their password**. This is optional, never required. The page warns that their device may

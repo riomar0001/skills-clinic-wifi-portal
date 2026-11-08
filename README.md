@@ -54,7 +54,8 @@ Then open **http://localhost**. The first admin needs the one-time code in
   set an **expiry** (searchable list from 1 hour to 90 days, or an exact date and time), change
   their ID, disable, reset passwords, delete. The password is shown once, to pass on to the person.
   Each user's page shows their **recent connections**: when their devices tried to join, accepted
-  or refused, and the device.
+  or refused, and the device. It also has a **Wi-Fi QR code** (also on My Wi-Fi) that fills in the
+  network **CCE Skills Clinic WiFi** and their ID when scanned; they type the password.
 - **Device limit:** each account can be limited to a number of devices (default 2). The first ones
   to join are registered; others are refused until an admin removes one.
 - **Import CSV:** add a whole class list at once. The file is checked first and nobody is added
