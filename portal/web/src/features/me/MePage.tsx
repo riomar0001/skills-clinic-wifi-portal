@@ -8,6 +8,7 @@ import { ConnectionTable } from '@/components/common/ConnectionTable'
 import { FormField } from '@/components/common/FormField'
 import { EmptyState, ErrorAlert, ListSkeleton, PageSkeleton } from '@/components/common/states'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { WifiQrCard } from '@/components/common/WifiQrCard'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,6 +34,10 @@ export function MePage() {
       </div>
 
       <AccessCard me={m} />
+      <WifiQrCard
+        username={m.username}
+        description="Scan with another phone’s camera to join with your ID filled in, then type your password. iPhone: join from Settings → Wi-Fi instead."
+      />
 
       <Tabs defaultValue="details" className="gap-4">
         <TabsList>

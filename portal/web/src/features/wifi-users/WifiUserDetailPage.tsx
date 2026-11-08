@@ -9,6 +9,7 @@ import { FormField } from '@/components/common/FormField'
 import { ConnectionTable } from '@/components/common/ConnectionTable'
 import { EmptyState, ErrorAlert, ListSkeleton, PageSkeleton } from '@/components/common/states'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { WifiQrCard } from '@/components/common/WifiQrCard'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -270,6 +271,11 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
               <ExpiryEditor user={user} />
             </CardContent>
           </Card>
+
+          <WifiQrCard
+            username={user.username}
+            description="Show or print this for the person: scanning fills in the network and their ID. They type their password."
+          />
 
           <Card>
             <CardHeader>
