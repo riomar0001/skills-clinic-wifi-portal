@@ -34,8 +34,8 @@ export function AppSidebar({ admin }: { admin: string }) {
               <Link to="/" onClick={() => setOpenMobile(false)}>
                 <Logo />
                 <div className="grid flex-1 text-left leading-tight">
-                  <span className="truncate font-semibold">Wi-Fi Portal</span>
-                  <span className="truncate text-xs text-muted-foreground">Skills Clinic</span>
+                  <span className="truncate font-semibold">CCE Skills Clinic</span>
+                  <span className="truncate text-xs text-muted-foreground">Wifi Admin Portal</span>
                 </div>
               </Link>
             </SidebarMenuButton>

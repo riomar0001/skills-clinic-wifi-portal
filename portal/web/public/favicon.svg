@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#2f5bea"/><path d="M6.5 13.5a13.5 13.5 0 0 1 19 0M10 17a8.5 8.5 0 0 1 12 0M13.5 20.5a3.5 3.5 0 0 1 5 0" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="24" r="1.8" fill="#fff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -15 130 130" role="img" aria-label="CCE Skills Clinic">
+  <!-- Two interlocking hooks in a rotated square: 19-wide bands with even 6.7 gaps. -->
+  <g transform="rotate(45 50 50)" fill="none" stroke-width="19" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M37.1 88.5 H11.5 V11.5 H37.2 V62.8" stroke="#FDDB52"/>
+    <path d="M62.9 11.5 H88.5 V88.5 H62.8 V37.2" stroke="#33323C"/>
+  </g>
+</svg>
