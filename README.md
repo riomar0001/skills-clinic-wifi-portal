@@ -7,7 +7,7 @@ their device asks for a **username and password**, and the router checks it with
 ```
 phone ──Wi-Fi──> TL-WR840N ──WAN port──> modem (192.168.0.1) <──Ethernet── server PC (192.168.0.60)
                  192.168.0.83    "is ana / ****** ok?" ──UDP 1812──>  wifi-radius   (FreeRADIUS)
-                                                                       wifi-portal   (admin portal)
+                                                                       wifi-portal   (portal, :8080)
 ```
 
 **The server must stay on with Docker running.** If it is off, nobody new can join the Wi-Fi.
@@ -17,12 +17,16 @@ Devices already connected stay connected.
 
 | Container | Port | Who uses it |
 |---|---|---|
-| `wifi-radius` | UDP **1812** | The router, to check logins. |
-| `wifi-portal` | **8080**, this machine only | Admins: `http://localhost:8080`. |
-| `wifi-portal` | **8081**, the network | Wi-Fi users: `http://<server>:8081` to change their own password. Serves nothing else. |
+| `wifi-radius` | UDP **1812** | The router, to check logins. Also records every login attempt. |
+| `wifi-portal` | **8080**, the network | Everyone: `http://<server>:8080` (e.g. `http://192.168.0.60:8080`). One sign-in page: admins land in the admin portal, students and faculty in **My Wi-Fi**. |
 
-The portal keeps admins, Wi-Fi users, sessions and an activity log in **SQLite** (Docker volume
-`portal-db`). It writes `data/users` for FreeRADIUS, which reloads within a few seconds of a change.
+The portal keeps admins, Wi-Fi users, sessions, login history and an activity log in **SQLite**
+(Docker volume `portal-db`). It writes `data/users` for FreeRADIUS, which reloads within a few
+seconds of a change. FreeRADIUS writes each login attempt to the `radius-events` volume, and the
+portal imports it (90 days are kept).
+
+Because the sign-in page is reachable from the network, **use a strong admin password**. Five wrong
+passwords lock a username for five minutes.
 
 ## First-time setup
 
@@ -36,11 +40,13 @@ It's safe to run again: it never replaces what already exists.
 Then open **http://localhost:8080**. The first admin needs the one-time code in
 `data\setup-code.txt`.
 
-## Using the portal
+## Using the portal (admins)
 
-- **Wi-Fi users:** add people with a generated password, set an **expiry** (1 day, 1 week, 30 or
-  90 days, or an exact date), disable, reset passwords, delete. The password is shown once, to
-  pass on to the person.
+- **Wi-Fi users:** each person has a **Student ID / Faculty ID** (their Wi-Fi username), first and
+  last name, and a **UMindanao email** (`@umindanao.edu.ph`). Add people with a generated password,
+  set an **expiry** (1 day, 1 week, 30 or 90 days, or an exact date), disable, reset passwords,
+  delete. The password is shown once, to pass on to the person. Each user's page shows their
+  **recent connections**: when their devices tried to join, accepted or refused, and the device.
 - **Expiry** is enforced by FreeRADIUS itself: after that moment the login is refused, even if the
   portal is stopped.
 - **Admins:** add and remove admins; change your own password from the user menu.
@@ -48,15 +54,29 @@ Then open **http://localhost:8080**. The first admin needs the one-time code in
   again), and a database **backup** download.
 - **Activity:** who changed what.
 
-Usernames are lowercase. Phones often capitalise the first letter, so tell people to type it in
+IDs are lowercase. Phones often capitalise the first letter, so tell people to type it in
 lowercase.
 
-### Wi-Fi users changing their own password
+Add a Wi-Fi user from the server's command line instead (the password is asked for, not typed on
+the command line):
 
-Share `http://<server address>:8081` (e.g. `http://192.168.0.60:8081`). People enter their
-username, current password and new password. The page warns them first that their device may
-drop off the Wi-Fi and will need the new password to reconnect. Five wrong passwords lock that
-username for five minutes.
+```powershell
+docker exec -it wifi-portal python -m app.cli add-wifi-user --id 484470 --first "Mario Jr" --last Inguito --email m.inguito.484470@umindanao.edu.ph
+```
+
+## My Wi-Fi (students and faculty)
+
+Share `http://<server address>:8080` (e.g. `http://192.168.0.60:8080`). People sign in with their
+Student/Faculty ID and Wi-Fi password, on the same page admins use, and can:
+
+- see whether their access is active, when it ends, and when they last connected;
+- update their first name, last name and UMindanao email;
+- see their **connection history** (last 90 days);
+- **change their password**. This is optional, never forced. The page warns them that their device
+  may drop off the Wi-Fi and will need the new password, and asks them to confirm.
+
+Disabled accounts can't sign in. Expired accounts can sign in to see why, but can't change their
+password. A Wi-Fi user's session can never open admin pages.
 
 ## Router setup (once)
 
@@ -99,6 +119,7 @@ trust it once, unless they get a configuration profile.
 | `setup.ps1` | One-time setup; safe to re-run. |
 | `compose.yaml` | Both containers. |
 | `Dockerfile`, `start.sh`, `reload-users.sh` | FreeRADIUS image; reloads users when `data/users` changes. |
+| `wifi-events.conf` | Makes FreeRADIUS record each login attempt for the connection history. |
 | `portal/backend` | FastAPI + SQLAlchemy + Alembic, managed with **uv**. |
 | `portal/web` | React + TypeScript + Vite, **shadcn/ui** + Tailwind. |
 | `data/clients.conf` | Router secret. Private. |

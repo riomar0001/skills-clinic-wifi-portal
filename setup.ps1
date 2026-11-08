@@ -58,8 +58,7 @@ docker compose --project-directory $PSScriptRoot up -d --build
 Write-Host ''
 Write-Host 'Running:'
 Write-Host '  Login server      UDP 1812 (for the router)'
-Write-Host '  Admin portal      http://localhost:8080  (this PC only)'
-Write-Host '  Password page     http://<this PC>:8081  (for Wi-Fi users)'
+Write-Host '  Portal            http://<this PC>:8080  (one sign-in for admins and Wi-Fi users)'
 $setupCode = Join-Path $data 'setup-code.txt'
 if (Test-Path $setupCode) {
     Write-Host ''
