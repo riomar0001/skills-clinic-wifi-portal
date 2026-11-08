@@ -1,18 +1,32 @@
 import { timeAgo } from './format'
 
-const DAY = 86_400
+const HOUR = 3_600
+const DAY = 24 * HOUR
 
-export const EXPIRY_PRESETS: { label: string; days: number | null }[] = [
-  { label: 'Never', days: null },
-  { label: '1 day', days: 1 },
-  { label: '1 week', days: 7 },
-  { label: '30 days', days: 30 },
-  { label: '90 days', days: 90 },
+/** Access lengths offered in the expiry dropdown, from 1 hour to 90 days. */
+export const EXPIRY_PRESET_GROUPS: { label: string; presets: { label: string; seconds: number }[] }[] = [
+  {
+    label: 'Hours',
+    presets: [1, 2, 3, 4, 6, 8, 12].map((h) => ({ label: h === 1 ? '1 hour' : `${h} hours`, seconds: h * HOUR })),
+  },
+  {
+    label: 'Days',
+    presets: [
+      { label: '1 day', seconds: DAY },
+      { label: '2 days', seconds: 2 * DAY },
+      { label: '3 days', seconds: 3 * DAY },
+      { label: '1 week', seconds: 7 * DAY },
+      { label: '2 weeks', seconds: 14 * DAY },
+      { label: '30 days', seconds: 30 * DAY },
+      { label: '60 days', seconds: 60 * DAY },
+      { label: '90 days', seconds: 90 * DAY },
+    ],
+  },
 ]
 
-/** Unix seconds `days` from now, rounded up to the end of that minute. */
-export function expiryFromNow(days: number, nowMs = Date.now()): number {
-  return Math.ceil(nowMs / 60_000) * 60 + days * DAY
+/** Unix seconds `seconds` from now, rounded up to the next whole minute. */
+export function expiryFromNow(seconds: number, nowMs = Date.now()): number {
+  return Math.ceil(nowMs / 60_000) * 60 + seconds
 }
 
 /** Unix seconds -> value for <input type="datetime-local"> (the browser's local time). */

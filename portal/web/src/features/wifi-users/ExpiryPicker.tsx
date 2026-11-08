@@ -1,8 +1,21 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { EXPIRY_PRESETS, expiryFromNow, fromLocalInput, toLocalInput } from '@/lib/expiry'
-import { cn } from '@/lib/utils'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { EXPIRY_PRESET_GROUPS, expiryFromNow, fromLocalInput, toLocalInput } from '@/lib/expiry'
+import { formatDateTime } from '@/lib/format'
+
+const NEVER = 'never'
+const CUSTOM = 'custom'
+const DEFAULT_CUSTOM_SECONDS = 7 * 86_400
 
 interface ExpiryPickerProps {
   /** Unix seconds, or null for "never expires". */
@@ -12,48 +25,55 @@ interface ExpiryPickerProps {
   'aria-describedby'?: string
 }
 
-/** Quick presets plus an exact date and time for when a Wi-Fi account stops working. */
+/** Dropdown of access lengths (1 hour to 90 days), "Never", or an exact date and time. */
 export function ExpiryPicker({ value, onChange, id, ...aria }: ExpiryPickerProps) {
-  const [preset, setPreset] = useState<string>(value === null ? 'Never' : 'Custom')
+  const [choice, setChoice] = useState(value === null ? NEVER : CUSTOM)
 
-  const pick = (label: string, days: number | null) => {
-    setPreset(label)
-    onChange(days === null ? null : expiryFromNow(days))
+  const pick = (next: string) => {
+    setChoice(next)
+    if (next === NEVER) onChange(null)
+    else if (next === CUSTOM) onChange(value ?? expiryFromNow(DEFAULT_CUSTOM_SECONDS))
+    else onChange(expiryFromNow(Number(next)))
   }
 
   return (
     <div className="grid gap-2">
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Expiry presets">
-        {EXPIRY_PRESETS.map((p) => (
-          <Button
-            key={p.label}
-            type="button"
-            size="sm"
-            variant={preset === p.label ? 'default' : 'outline'}
-            aria-pressed={preset === p.label}
-            onClick={() => pick(p.label, p.days)}
-          >
-            {p.label}
-          </Button>
-        ))}
-        <Button type="button" size="sm" variant={preset === 'Custom' ? 'default' : 'outline'} aria-pressed={preset === 'Custom'}
-          onClick={() => { setPreset('Custom'); if (value === null) onChange(expiryFromNow(7)) }}>
-          Custom
-        </Button>
-      </div>
-      <Input
-        id={id}
-        {...aria}
-        type="datetime-local"
-        className={cn(value === null && 'hidden')}
-        value={value === null ? '' : toLocalInput(value)}
-        min={toLocalInput(expiryFromNow(0))}
-        onChange={(e) => {
-          setPreset('Custom')
-          const next = fromLocalInput(e.target.value)
-          if (next !== null) onChange(next)
-        }}
-      />
+      <Select value={choice} onValueChange={pick}>
+        <SelectTrigger id={id} {...aria} className="w-full sm:w-64">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NEVER}>Never</SelectItem>
+          {EXPIRY_PRESET_GROUPS.map((group) => (
+            <SelectGroup key={group.label}>
+              <SelectSeparator />
+              <SelectLabel>{group.label}</SelectLabel>
+              {group.presets.map((p) => (
+                <SelectItem key={p.seconds} value={String(p.seconds)}>{p.label}</SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+          <SelectSeparator />
+          <SelectItem value={CUSTOM}>Exact date and time…</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {choice === CUSTOM && (
+        <Input
+          type="datetime-local"
+          aria-label="Exact expiry date and time"
+          className="sm:w-64"
+          value={value === null ? '' : toLocalInput(value)}
+          min={toLocalInput(expiryFromNow(0))}
+          onChange={(e) => {
+            const next = fromLocalInput(e.target.value)
+            if (next !== null) onChange(next)
+          }}
+        />
+      )}
+      {choice !== NEVER && choice !== CUSTOM && value !== null && (
+        <p className="text-xs text-muted-foreground">Ends {formatDateTime(value)}</p>
+      )}
     </div>
   )
 }
