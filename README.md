@@ -4,11 +4,23 @@ One Wi-Fi login per person. The TP-Link TL-WR840N runs **WPA2-Enterprise**: when
 their device asks for a **username and password**, and the router checks it with a login server
 (FreeRADIUS) running in Docker on an always-on machine.
 
-```
-phone ──Wi-Fi──> TL-WR840N (192.168.1.1) ──LAN cable──> server PC (192.168.1.101)
-                 "is ana / ****** ok?" ──UDP 1812──>  wifi-radius   (FreeRADIUS)
-                                                      wifi-proxy    (:80, :443)
-                                                       └ wifi-portal (portal)
+```mermaid
+flowchart LR
+    devices["Phones and laptops"]
+    browsers["Browsers"]
+    router["TP-Link TL-WR840N<br/>192.168.1.1"]
+
+    subgraph server["Server PC · 192.168.1.101 · Docker"]
+        radius["wifi-radius<br/>FreeRADIUS · UDP 1812"]
+        proxy["wifi-proxy<br/>TCP 80, 443"]
+        portal["wifi-portal<br/>admin portal + My Wi-Fi"]
+    end
+
+    devices -- "Wi-Fi · WPA2-Enterprise" --> router
+    router -- "Is this ID and password right?" --> radius
+    browsers --> proxy
+    proxy --> portal
+    portal -- "user list" --> radius
 ```
 
 **The server must stay on with Docker running.** If it is off, nobody new can join the Wi-Fi.

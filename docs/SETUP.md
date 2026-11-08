@@ -11,12 +11,26 @@ After setup:
 
 ## How it fits together
 
+```mermaid
+flowchart LR
+    devices["Phones and laptops"]
+    browsers["Browsers<br/>admins, students, faculty"]
+    router["TP-Link TL-WR840N<br/>192.168.1.1"]
+
+    subgraph server["Server PC · 192.168.1.101 · Docker"]
+        radius["wifi-radius<br/>login server · UDP 1812"]
+        proxy["wifi-proxy<br/>front door · TCP 80, 443"]
+        portal["wifi-portal<br/>admin portal + My Wi-Fi"]
+    end
+
+    devices -- "Wi-Fi · WPA2-Enterprise" --> router
+    router -- "Is this ID and password right?" --> radius
+    browsers --> proxy
+    proxy --> portal
+    portal -- "user list" --> radius
 ```
-phone ──Wi-Fi──> TL-WR840N (192.168.1.1) ──LAN cable──> server PC (192.168.1.101)
-                 "is this ID and password right?" ──UDP 1812──> wifi-radius   (login server)
-browsers ──────────────────────────────────────── TCP 80/443 ──> wifi-proxy    (front door)
-                                                                  └ wifi-portal (admin portal + My Wi-Fi)
-```
+
+The optional `wifi-certs` and `wifi-tunnel` containers (steps 11 and 12) are in the table below.
 
 | Container | What it does |
 |---|---|
@@ -43,7 +57,7 @@ browsers ───────────────────────�
 | 11 | [A publicly trusted certificate (Let's Encrypt)](#11-optional-a-publicly-trusted-certificate-lets-encrypt) | Optional |
 | 12 | [An offline page through Cloudflare Tunnel](#12-optional-an-offline-page-through-cloudflare-tunnel) | Optional |
 
-Each step ends with a **✅ Check**. Don't move on until it passes; the
+Each step ends with a **Check**. Don't move on until it passes; the
 [troubleshooting table](MAINTENANCE.md#troubleshooting) covers the usual problems.
 
 ---
@@ -75,7 +89,7 @@ The router finds the login server by its IP address, so the address must never c
 
 Leave the server on **Obtain an IP address automatically**; the router now always gives it the same address.
 
-**✅ Check:** after the reboot, `ipconfig` (or `ip -4 addr`) shows the reserved address.
+**Check:** after the reboot, `ipconfig` (or `ip -4 addr`) shows the reserved address.
 
 ## 3. Install Docker
 
@@ -98,7 +112,7 @@ sudo usermod -aG docker $USER      # then sign out and back in
 
 Docker starts on boot by itself, and the containers restart with it.
 
-**✅ Check:** `docker version` shows a **Server** version.
+**Check:** `docker version` shows a **Server** version.
 
 ## 4. Get the project
 
@@ -109,7 +123,7 @@ git clone <repository-url> skills-clinic-wifi-portal
 cd skills-clinic-wifi-portal
 ```
 
-**✅ Check:** the folder contains `setup.ps1`, `setup.sh` and `compose.yaml`.
+**Check:** the folder contains `setup.ps1`, `setup.sh` and `compose.yaml`.
 
 ## 5. Run setup
 
@@ -136,7 +150,7 @@ Running it again is safe: it never replaces the certificate, the secret or any d
 > **Linux:** the portal container runs as user ID 1000. If your user isn't 1000 (`id -u`), run
 > `sudo chown -R 1000:1000 data` once, or the portal can't write the user list.
 
-**✅ Check:** `docker compose ps` shows `wifi-radius`, `wifi-portal`, `wifi-proxy` and `wifi-certs` as **Up**.
+**Check:** `docker compose ps` shows `wifi-radius`, `wifi-portal`, `wifi-proxy` and `wifi-certs` as **Up**.
 
 ## 6. Create the first admin
 
@@ -156,7 +170,7 @@ portal first. It stops working once the first admin exists.
 docker exec -it wifi-portal python -m app.cli add-admin <username>
 ```
 
-**✅ Check:** you're signed in, and the **Dashboard** shows the **Login server** as *Running*.
+**Check:** you're signed in, and the **Dashboard** shows the **Login server** as *Running*.
 
 ## 7. Open the portal from another device
 
@@ -173,7 +187,7 @@ The server must accept these from the network:
 - **Linux:** Docker opens published ports itself, even past `ufw`. Nothing to add unless another
   firewall sits in front.
 
-**✅ Check:** on a phone connected to the router's Wi-Fi (still the old Wi-Fi password at this
+**Check:** on a phone connected to the router's Wi-Fi (still the old Wi-Fi password at this
 point), open `http://192.168.1.101` (the server's address). The sign-in page loads.
 
 ## 8. Add yourself as a Wi-Fi user
@@ -187,7 +201,7 @@ Do this **before** switching the router in step 9, or nobody (including you) can
 
 Adding everyone else, CSV import and expiry: [Using the portal](USING.md#managing-wi-fi-users).
 
-**✅ Check:** you're in the **Wi-Fi users** list as **Active**.
+**Check:** you're in the **Wi-Fi users** list as **Active**.
 
 ## 9. Switch the router to WPA2-Enterprise
 
@@ -208,7 +222,7 @@ In the TP-Link at `http://192.168.1.1`:
 Also change the router's own admin password from the default (**System Tools → Password**, or
 **System Tools → Administration** on newer firmware).
 
-**✅ Check:** the router's Wireless Security page shows WPA/WPA2 - Enterprise with your server's address.
+**Check:** the router's Wireless Security page shows WPA/WPA2 - Enterprise with your server's address.
 
 ## 10. Join the Wi-Fi and check
 
@@ -222,7 +236,7 @@ On a phone, join **CCE Skills Clinic WiFi** with the ID and password from step 8
 Devices ask once to trust the certificate because it was made in step 5. Check it says
 **wifi.skillsclinic.local** before trusting it. Step 11 removes the question on Android.
 
-**✅ Check:** the phone connects and has internet, and in the portal your page (**Wi-Fi users** →
+**Check:** the phone connects and has internet, and in the portal your page (**Wi-Fi users** →
 you) shows the attempt as **Accepted** under **Recent connections**.
 
 **The required setup is done.** Now:
@@ -289,7 +303,7 @@ to `https://<the name>`, so the name must lead to the server **first**. In Cloud
 It must be **DNS only**: Cloudflare's proxy can't reach a private address. The record only works on
 your own network and reveals nothing beyond that private address. (Step 12 replaces it.)
 
-**✅ Check:** `nslookup wifi.riomar.dev 1.1.1.1` answers the server's address.
+**Check:** `nslookup wifi.riomar.dev 1.1.1.1` answers the server's address.
 
 ### 11d. Test, then turn it on
 
@@ -309,7 +323,7 @@ your own network and reveals nothing beyond that private address. (Step 12 repla
    changed. On Android: EAP **PEAP**, Phase 2 **MSCHAPV2**, CA certificate **Use system
    certificates**, Domain **wifi.riomar.dev**, Identity = ID.
 
-**✅ Check:** portal → **Server** shows the certificate as **publicly trusted**, and
+**Check:** portal → **Server** shows the certificate as **publicly trusted**, and
 `https://wifi.riomar.dev` opens with a padlock. `http://<server>` redirects there, so old bookmarks
 keep working.
 
@@ -349,7 +363,7 @@ Cloudflare Worker (`fallback/`) shows a **"Wi-Fi portal offline"** page instead 
    into chat or email: anyone with it can run your tunnel.
 5. Run setup again (step 5). It starts `wifi-tunnel` because the token file exists.
 
-**✅ Check:** the dashboard shows the tunnel as **Healthy**, and `docker compose logs tunnel --tail 20`
+**Check:** the dashboard shows the tunnel as **Healthy**, and `docker compose logs tunnel --tail 20`
 shows `Registered tunnel connection`.
 
 ### 12b. Point the name at the tunnel
@@ -373,7 +387,7 @@ shows `Registered tunnel connection`.
    `proxy:80` loops forever.
 3. **Add route.** Cloudflare adds a proxied (orange cloud) `wifi` record pointing at the tunnel.
 
-**✅ Check:** `https://wifi.riomar.dev` loads the portal, also on a phone using mobile data.
+**Check:** `https://wifi.riomar.dev` loads the portal, also on a phone using mobile data.
 
 ### 12c. Deploy the offline page
 
@@ -391,7 +405,7 @@ If your name isn't `wifi.riomar.dev`, change `routes` in `fallback/wrangler.json
 is `MESSAGE` in `fallback/src/index.js`; run `npm run deploy` again after changing it. Cloudflare's
 free plan runs the Worker for up to 100,000 requests a day, far more than the portal uses.
 
-**✅ Check:** pretend the server is off, then bring it back:
+**Check:** pretend the server is off, then bring it back:
 
 ```bash
 docker compose stop tunnel      # within a minute, https://wifi.riomar.dev shows "Wi-Fi portal offline"
