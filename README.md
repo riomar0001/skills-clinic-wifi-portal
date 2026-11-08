@@ -42,7 +42,8 @@ seconds of a change. FreeRADIUS writes each login attempt to the `radius-events`
 portal imports it (90 days are kept).
 
 Because the sign-in page is reachable from the network, **use a strong admin password**. Five wrong
-passwords lock a username for five minutes.
+passwords from one device lock that name there for five minutes; twenty from anywhere lock the
+account for fifteen.
 
 ## First-time setup
 
@@ -171,7 +172,7 @@ Setup: [docs/SETUP.md, step 11](docs/SETUP.md#11-optional-a-publicly-trusted-cer
 | `tunnel/` | Cloudflare Tunnel token (setup step 12). Private; not in Git. |
 | `fallback/` | Cloudflare Worker that shows the "portal offline" page; deployed with `npm run deploy`. |
 
-Back up the `data` folder and the portal database (portal → Server → Download backup).
+Back up the `data` folder and the portal database (portal → Server → Download backup, which asks for your password again).
 
 ## Maintenance
 

@@ -36,7 +36,8 @@ Two things hold everything:
    changes. With setup step 11, also keep the `letsencrypt` folder (the Cloudflare token), or just make
    a new token. With step 12, keep the `tunnel` folder too.
 2. **The portal database**: admins, Wi-Fi users, history. Download it from the portal:
-   **Server → Download backup** (a `.db` file). Do this regularly.
+   **Server → Download backup** (a `.db` file); it asks for your admin password again, and each download
+   is listed in **Activity**. Do this regularly.
 
 Keep backups private: they contain password hashes and the certificate's private key.
 
@@ -155,9 +156,15 @@ Also delete the token in Cloudflare (**API Tokens → … → Delete**).
 - **Access requests** come from a public form, so anyone who can open the portal can send one. They
   grant nothing until an admin approves, so check the name and ID before approving. The form is
   limited to 60 requests per address per 10 minutes and 300 waiting requests in total.
-- **Wrong passwords:** 5 in a row lock that name from that address for 5 minutes. On Docker Desktop
-  for Windows every visitor on the network looks like the same address, so the lock applies to the
-  name for everyone; on a Linux server it's per device. Through the tunnel it's per public address.
+- **Wrong passwords** (sign-in, Change password, router secret and backup all count):
+  - 5 within 15 minutes for a name from one address lock that name from that address for 5 minutes.
+    On Docker Desktop for Windows every visitor on the network looks like the same address, so this
+    applies to the name for everyone there; on a Linux server it's per device. Through the tunnel it's
+    per public address.
+  - 20 within 15 minutes for a name from **any** addresses lock the account for 15 minutes, so
+    guesses spread over many machines are limited too. The flip side: an attack can lock the real
+    person out for a while. Restarting the portal (`docker compose restart portal`) clears every lock.
+  - Locks are never forgotten early, even if someone floods the page with made-up names.
 - **Windows firewall:** Docker Desktop's rule allows any port on networks set to **Public**, but only
   the ports Docker publishes (80, 443 and 1812) are listening, so that's all it exposes.
 - **Router:** change the TP-Link's admin password from the default, keep WPS off, and keep the router

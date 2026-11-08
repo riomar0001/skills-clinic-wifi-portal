@@ -5,8 +5,8 @@ Everyday use once [setup](SETUP.md) is done. For backups, moving the server and 
 
 The portal is at `http://<server address>` (e.g. `http://192.168.1.101`), or `https://wifi.riomar.dev`
 with the Let's Encrypt certificate. Admins and Wi-Fi users sign in on the **same page**: admins land
-in the admin portal, students and faculty in **My Wi-Fi**. Five wrong passwords lock a name for five
-minutes.
+in the admin portal, students and faculty in **My Wi-Fi**. Five wrong passwords from one device lock that
+name there for five minutes; twenty from anywhere lock the account for fifteen.
 
 ## Managing Wi-Fi users
 
@@ -186,5 +186,5 @@ admin password.
 ## The Server page
 
 Portal → **Server** shows the login server's certificate, the router settings, the **router secret**
-(asks for your password again), and a database **backup** download
+(asks for your password again), and a database **backup** download (also asks for your password again)
 ([Backups](MAINTENANCE.md#backups)).
