@@ -1,4 +1,5 @@
 import { LogOut } from 'lucide-react'
+import { useEffect } from 'react'
 import { Outlet, useNavigate, useOutletContext } from 'react-router'
 import { Logo } from '@/components/layout/Logo'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,15 @@ export function MeLayout() {
   const username = useOutletContext<string>()
   const logout = useLogout()
   const navigate = useNavigate()
+
+  // Wi-Fi users shouldn't see "Admin Portal" in their browser tab.
+  useEffect(() => {
+    const previous = document.title
+    document.title = 'My Wi-Fi · CCE Skills Clinic'
+    return () => {
+      document.title = previous
+    }
+  }, [])
 
   return (
     <div className="min-h-svh bg-muted/30">
