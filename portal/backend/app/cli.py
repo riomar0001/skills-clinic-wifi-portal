@@ -2,6 +2,7 @@
 
     docker exec -it wifi-portal python -m app.cli list-admins
     docker exec -it wifi-portal python -m app.cli reset-admin <username>
+    docker exec -it wifi-portal python -m app.cli add-admin <username>
     docker exec -it wifi-portal python -m app.cli add-wifi-user --id 484470 --first "Mario Jr" \\
         --last Inguito --email m.inguito.484470@umindanao.edu.ph
 
@@ -40,6 +41,10 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("list-admins", help="show admin usernames")
     reset = sub.add_parser("reset-admin", help="set a new password for an admin")
     reset.add_argument("username")
+    reset.add_argument("--password-stdin", action="store_true", help="read the password from standard input")
+    new_admin = sub.add_parser("add-admin", help="add an admin account")
+    new_admin.add_argument("username")
+    new_admin.add_argument("--password-stdin", action="store_true", help="read the password from standard input")
     add = sub.add_parser("add-wifi-user", help="add a Wi-Fi user")
     add.add_argument("--id", required=True, help="Student ID or Faculty ID (their Wi-Fi username)")
     add.add_argument("--first", required=True, help="first name")
@@ -66,6 +71,11 @@ def main(argv: list[str] | None = None) -> int:
             if args.command == "reset-admin":
                 AdminService(db).reset_password(args.username, password)
                 print(f"Password changed for {args.username}. They are signed out everywhere.")
+                return 0
+
+            if args.command == "add-admin":
+                admin = AdminService(db).create(CONSOLE, args.username.strip(), password)
+                print(f"Added admin {admin.username}.")
                 return 0
 
             # add-wifi-user

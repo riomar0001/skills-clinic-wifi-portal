@@ -33,6 +33,19 @@ def test_add_wifi_user_reads_password_from_stdin(monkeypatch, settings, capsys):
     assert f"484470 NT-Password := 0x{nt_hash('Garden-Path-58')}" in settings.users_file.read_text()
 
 
+def test_add_admin(monkeypatch, settings, capsys):
+    _env(monkeypatch, settings)
+    monkeypatch.setattr("sys.stdin", io.StringIO("long-enough-pass\n"))
+    assert cli.main(["add-admin", "484470", "--password-stdin"]) == 0, capsys.readouterr().err
+    capsys.readouterr()
+    assert cli.main(["list-admins"]) == 0
+    assert capsys.readouterr().out.split() == ["484470"]
+
+    monkeypatch.setattr("sys.stdin", io.StringIO("short\n"))
+    assert cli.main(["add-admin", "other", "--password-stdin"]) == 1
+    assert "10-128" in capsys.readouterr().err
+
+
 def test_add_wifi_user_rejects_bad_email(monkeypatch, settings, capsys):
     _env(monkeypatch, settings)
     monkeypatch.setattr("sys.stdin", io.StringIO("Garden-Path-58\n"))
