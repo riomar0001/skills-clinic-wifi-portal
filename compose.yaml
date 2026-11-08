@@ -19,8 +19,10 @@ services:
     depends_on:
       - radius
     ports:
-      # This machine only. To open it to the network, change to "8080:8080".
+      # Admin portal: this machine only. To open it to the network, change to "8080:8080".
       - "127.0.0.1:8080:8080"
+      # Wi-Fi users' change-password page: open to the network; serves nothing else.
+      - "8081:8081"
     environment:
       RADIUS_HOST: radius
     volumes:

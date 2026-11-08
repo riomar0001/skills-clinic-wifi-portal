@@ -18,7 +18,9 @@ ENV UV_COMPILE_BYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORTAL_STATIC_DIR=/srv/portal/web \
     PORTAL_DB_PATH=/var/lib/portal/portal.db \
-    RADIUS_DATA_DIR=/mnt/radius
+    RADIUS_DATA_DIR=/mnt/radius \
+    PORTAL_ADMIN_PORT=8080 \
+    PORTAL_SELF_SERVICE_PORT=8081
 
 WORKDIR /app
 # Dependencies first, so code changes don't reinstall them.
@@ -34,6 +36,6 @@ RUN useradd --uid 1000 --no-create-home --shell /usr/sbin/nologin portal \
  && chown portal:portal /var/lib/portal
 USER portal
 
-EXPOSE 8080
-CMD ["uvicorn", "--factory", "app.main:create_app", "--host", "0.0.0.0", "--port", "8080", \
-     "--no-server-header", "--timeout-keep-alive", "5", "--limit-concurrency", "100"]
+# 8080: admin portal. 8081: Wi-Fi users' change-password page only.
+EXPOSE 8080 8081
+CMD ["python", "-m", "app.serve"]
