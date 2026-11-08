@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Database, Download, Info } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Database, Download, Info, KeyRound } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { api, errorMessage } from '@/api/client'
 import type { Certificate } from '@/api/types'
 import { CopyButton } from '@/components/common/CopyButton'
@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/format'
+import { RouterSecretDialog } from './RouterSecretDialog'
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -24,6 +25,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 export function ServerPage() {
   const cert = useQuery({ queryKey: ['certificate'], queryFn: () => api.get<Certificate>('/api/certificate') })
+  const [secretOpen, setSecretOpen] = useState(false)
 
   return (
     <>
@@ -85,7 +87,14 @@ export function ServerPage() {
               <Row label="Encryption">AES</Row>
               <Row label="RADIUS Server IP">This server’s address on the network</Row>
               <Row label="RADIUS Server Port"><code className="font-mono">1812</code></Row>
-              <Row label="RADIUS Password">The <code className="font-mono">secret</code> in <code className="font-mono">data\clients.conf</code></Row>
+              <Row label="RADIUS Password">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono tracking-widest text-muted-foreground" aria-label="Hidden">••••••••••••</span>
+                  <Button variant="outline" size="sm" onClick={() => setSecretOpen(true)}>
+                    <KeyRound /> Show secret
+                  </Button>
+                </div>
+              </Row>
             </dl>
           </CardContent>
         </Card>
@@ -109,6 +118,7 @@ export function ServerPage() {
           </CardFooter>
         </Card>
       </div>
+      <RouterSecretDialog open={secretOpen} onClose={() => setSecretOpen(false)} />
     </>
   )
 }

@@ -16,6 +16,7 @@ const DESCRIPTIONS: Record<string, (target: string) => string> = {
   'admin.create': (t) => `added admin ${t}`,
   'admin.delete': (t) => `removed admin ${t}`,
   'admin.password': (t) => `changed the password of admin ${t}`,
+  'admin.reveal_secret': () => 'viewed the router secret',
 }
 
 export function describeActivity(entry: ActivityEntry): string {
