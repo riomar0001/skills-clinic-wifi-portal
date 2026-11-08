@@ -28,14 +28,19 @@ test('shows the offline page when the tunnel is down', async () => {
   assert.equal(res.status, 503)
   assert.match(res.headers.get('content-type'), /text\/html/)
   assert.equal(res.headers.get('cache-control'), 'no-store')
-  assert.match(await res.text(), /Wi-Fi portal offline/)
+  const page = await res.text()
+  assert.match(page, /Wi-Fi portal offline/)
+  assert.match(page, /Monday to Friday, 8:00 AM to 7:00 PM/)
+  assert.match(page, /reach out to the STA or Mentor/)
 })
 
 test('answers API calls with JSON the portal can show', async () => {
   origin(() => new Response('bad gateway', { status: 502 }))
   const res = await worker.fetch(new Request('https://wifi.example/api/me'))
   assert.equal(res.status, 503)
-  assert.match((await res.json()).detail, /offline/)
+  const { detail } = await res.json()
+  assert.match(detail, /offline/)
+  assert.match(detail, /reach out to the STA or Mentor\. Skills Clinic hours: Monday to Friday, 8:00 AM to 7:00 PM\.$/)
 })
 
 test('shows the offline page when the origin can’t be reached at all', async () => {

@@ -6,9 +6,13 @@
 // 520-524: Cloudflare couldn't get a usable answer. 530: the tunnel is down (error 1033): server off.
 const SERVER_DOWN = new Set([502, 503, 504, 520, 521, 522, 523, 524, 530])
 
+const HOURS = 'Monday to Friday, 8:00 AM to 7:00 PM'
+const CONTACT = 'Please reach out to the STA or Mentor.'
+
 const MESSAGE =
   'The Wi-Fi portal is offline right now. The server may be off or restarting. ' +
-  'Try again in a few minutes. If it stays down, tell the CCE Skills Clinic staff.'
+  `Try again in a few minutes. If it stays down, ${CONTACT[0].toLowerCase()}${CONTACT.slice(1)} ` +
+  `Skills Clinic hours: ${HOURS}.`
 
 const PAGE = `<!doctype html>
 <html lang="en">
@@ -26,12 +30,19 @@ const PAGE = `<!doctype html>
   h1 { margin: 0 0 8px; font-size: 1.25rem; }
   p { margin: 0 0 12px; color: var(--muted); }
   a { color: inherit; font-weight: 600; }
+  dl { margin: 16px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 8px; }
+  dt { font-size: 0.8rem; color: var(--muted); }
+  dd { margin: 0; font-weight: 600; }
 </style>
 </head>
 <body>
 <main>
   <h1>Wi-Fi portal offline</h1>
-  <p>${MESSAGE}</p>
+  <p>The Wi-Fi portal is offline right now. The server may be off or restarting. Try again in a few minutes.</p>
+  <dl>
+    <div><dt>Skills Clinic hours</dt><dd>${HOURS}</dd></div>
+    <div><dt>Still down?</dt><dd>${CONTACT}</dd></div>
+  </dl>
   <p>Devices already on the Wi-Fi stay connected. This page checks again every minute, or <a href="">try now</a>.</p>
 </main>
 </body>
