@@ -143,16 +143,18 @@ Change your own password from the user menu (bottom left) → **Change password*
 
 ### Make a Wi-Fi user an admin
 
-On their page (**Wi-Fi users** → the person) → **Admin access → Make admin**. Keep or type an admin
-password (at least 10 characters), then **Make admin**, and give them the password shown: it isn't
-shown again. They get an admin account with the same ID:
+On their page (**Wi-Fi users** → the person) → **Admin access → Make admin**, then confirm. There's
+no new password: they sign in with their **ID and current Wi-Fi password** and land in the admin
+portal. The **Admins** page marks them **Wi-Fi password**.
 
-- Their **admin password** opens the admin portal; their **Wi-Fi password** still opens My Wi-Fi and
-  their devices keep working.
-- If they later change their admin password, their Wi-Fi password changes to match
-  ([below](#an-admin-who-also-uses-the-wi-fi)).
-- To take admin access away, remove them on the **Admins** page; their Wi-Fi account stays. Changing
-  their Student/Faculty ID or deleting their Wi-Fi account doesn't change the admin account.
+- It's **one password** for both. Changing it anywhere (their **Change password**, a **Reset
+  password** on their Wi-Fi page, or My Wi-Fi) changes both their Wi-Fi and admin sign-in. Their
+  devices then need the new password.
+- Their admin sign-in **follows their Wi-Fi account**: if it's disabled, expires or is deleted, they
+  can't sign in as an admin either. Changing their Student/Faculty ID also ends it; remove them on
+  **Admins** and promote them again.
+- To take admin access away, remove them on the **Admins** page; their Wi-Fi account stays.
+- If their Wi-Fi account is gone, `reset-admin` gives the admin account a password of its own.
 
 ### Forgot an admin password
 
