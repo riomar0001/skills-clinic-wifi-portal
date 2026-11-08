@@ -197,7 +197,8 @@ Add yourself as a Wi-Fi user **before** saving, or nobody can join (step 9).
 3. On a phone, join the Wi-Fi:
    - **iPhone/Mac:** enter the ID and password, then tap **Trust**.
    - **Android:** EAP **PEAP**, Phase 2 **MSCHAPV2**, CA certificate **Trust on first use**,
-     Identity = ID. Domain, if asked: `wifi.skillsclinic.local`.
+     Identity = ID. Domain, if asked: `wifi.skillsclinic.local`. (With a Let's Encrypt
+     certificate, step 12, use **Use system certificates** and your domain instead.)
    - **Windows:** enter the ID and password, then **Connect**.
 4. In the portal, the user's page shows the attempt under **Recent connections**.
 
@@ -268,6 +269,78 @@ password** on the same page admins use, and can:
 Disabled accounts can't sign in. Expired accounts can sign in to see why, but can't change their
 password. A Wi-Fi user's sign-in never opens admin pages.
 
+## 12. Optional: a publicly trusted certificate (Let's Encrypt)
+
+The certificate from step 4 is made here, so every device asks once whether to trust it. With a
+free **Let's Encrypt** certificate for a domain you own, Android connects with **Use system
+certificates** and no warning. iPhones, Macs and Windows still ask once, but show the certificate as
+verified.
+
+You need a domain whose DNS is on **Cloudflare** (this install uses `riomar.dev`). The server does
+**not** need to be reachable from the internet, and you **don't** create a DNS record for the name:
+the `wifi-certs` container proves you own the domain by adding a temporary TXT record through
+Cloudflare's API, then removes it. Phones never look the name up; it only has to match the certificate.
+
+**Trade-off:** the certificate is renewed automatically about every two months. Android (system
+certificates + domain) doesn't notice, but iPhones, Macs and Windows may ask to **Trust** again after
+a renewal. If that bothers your users more than the one-time warning, stay with the self-made one.
+
+### a. Make a Cloudflare API token
+
+1. <https://dash.cloudflare.com> → profile icon (top right) → **My Profile → API Tokens → Create Token**.
+2. **Token name:** `wifi-certs`.
+3. Click the **Edit zone DNS** card. Leave **Permissions** as `Zone · DNS · Edit`, and set
+   **Zone Resources** to `Include · Specific zone · riomar.dev` (your domain).
+4. **Token expiration:** No expiration. **Client IP address filtering:** leave empty.
+5. **Continue to summary → Create Token**, then **Copy** the token. Cloudflare shows it only once.
+
+The token can only edit DNS for that one domain. Never paste it into chat, email or the repository.
+
+### b. Put the token and name on the server
+
+In the project folder's `letsencrypt` folder (setup creates it; Git ignores it), create two text files:
+
+| File | Contents (one line) |
+|---|---|
+| `letsencrypt/cloudflare.ini` | `dns_cloudflare_api_token = <the token>` |
+| `letsencrypt/domain` | the name for the certificate, e.g. `wifi.riomar.dev` |
+
+In Notepad use **Save as type: All files (\*.\*)**, or the file ends up as `cloudflare.ini.txt`.
+On Linux, `chmod 600 letsencrypt/cloudflare.ini`.
+
+### c. Test, then turn it on
+
+1. Test the token and name without getting a real certificate:
+   ```bash
+   docker compose build certs
+   docker compose run --rm certs once --dry-run
+   ```
+   It should end with **Dry run worked**. If not, see the Troubleshooting table.
+2. Run setup again (step 4). It starts `wifi-certs`, which gets the certificate within a minute or two:
+   ```bash
+   docker compose logs certs --tail 20     # "Installed the certificate for wifi.riomar.dev"
+   docker compose logs radius --tail 20    # "Using the Let's Encrypt certificate"
+   ```
+   The login server restarts by itself to use it (a few seconds; connected devices stay on).
+3. Portal → **Server** shows the certificate as **publicly trusted**, and the joining instructions
+   shown after adding a Wi-Fi user switch to the new Android settings.
+4. Devices that joined before must **forget the network and join again**, because the certificate
+   changed. On Android: EAP **PEAP**, Phase 2 **MSCHAPV2**, CA certificate **Use system
+   certificates**, Domain **wifi.riomar.dev**, Identity = ID.
+
+`wifi-certs` checks twice a day and renews in the certificate's last 30 days. A failed attempt is
+retried after an hour, and the current certificate stays in use meanwhile.
+
+### Turn it off
+
+```bash
+docker compose stop certs
+```
+
+Then delete `letsencrypt/cloudflare.ini` and the files in `data/letsencrypt/`. The login server
+switches back to the self-made certificate by itself, and devices must forget the network and rejoin.
+Also delete the token in Cloudflare (**API Tokens → … → Delete**).
+
 ---
 
 ## Everyday commands
@@ -279,6 +352,7 @@ Run these in the project folder.
 | Status | `docker compose ps` |
 | Portal log | `docker compose logs portal --tail 50` |
 | Login server log | `docker compose logs radius --tail 50` |
+| Certificate log (step 12) | `docker compose logs certs --tail 50` |
 | Restart both | `docker compose restart` |
 | Stop both | `docker compose stop` |
 | Start again | `docker compose start` (or run setup again) |
@@ -289,6 +363,7 @@ Run these in the project folder.
 Two things hold everything:
 
 1. **The `data` folder**: certificate, keys, router secret. Copy it somewhere safe once; it rarely changes.
+   With step 12, also keep the `letsencrypt` folder (the Cloudflare token), or just make a new token.
 2. **The portal database**: admins, Wi-Fi users, history. Download it from the portal:
    **Server → Download backup** (a `.db` file). Do this regularly. Keep it private: it contains password hashes.
 
@@ -307,7 +382,8 @@ login server's user list from the restored database when it starts.
 
 ## Moving to another machine
 
-1. On the old server: download a database backup, and copy the whole project folder **including `data`**.
+1. On the old server: download a database backup, and copy the whole project folder **including `data`**
+   (and `letsencrypt`, if you use step 12; the new server gets a fresh certificate with the same name).
 2. On the new machine: install Docker (step 2), put the folder there, and run setup (step 4).
    Because `data` came along, the certificate and router secret stay the same, so phones won't see
    a new certificate.
@@ -330,6 +406,10 @@ login server's user list from the restored database when it starts.
 - **Router:** change the TP-Link's admin password from the default, keep WPS off, and keep the
   router secret private: anyone with it could ask the login server to check passwords.
 - **Backups and the `data` folder** contain password hashes and the certificate's private key.
+- **The Cloudflare token** (`letsencrypt/cloudflare.ini`, step 12) can change your domain's DNS
+  records. Only the `wifi-certs` container sees it. If it leaks, delete it in Cloudflare and make a new one.
+- **Let's Encrypt certificates are logged publicly**, so the name (e.g. `wifi.riomar.dev`) becomes
+  visible. That's normal and reveals nothing else.
 
 ## Troubleshooting
 
@@ -342,4 +422,8 @@ login server's user list from the restored database when it starts.
 | Nobody can join the Wi-Fi | Portal dashboard → **Login server** must say *Running*. Router's RADIUS IP, port 1812 and secret must match (step 8). |
 | One person can't join | Their page: enabled, not expired, password correct? **Recent connections** shows whether the login server saw the attempt and refused it. |
 | Wrong ID typed on a phone | IDs are lowercase; phones often capitalise the first letter. |
+| Certificate: "Not set up" | `letsencrypt/cloudflare.ini` or `letsencrypt/domain` is missing or empty. Check it isn't saved as `.ini.txt`. |
+| Certificate: Cloudflare authentication or "zone" error | The token is wrong, expired, or not allowed to edit DNS for that domain. Make a new one (step 12a). |
+| Certificate: "rateLimited" | Too many real attempts for that name. Wait (the message says until when); test with `--dry-run`. |
+| Android still warns after step 12 | It kept the old settings: forget the network, then choose **Use system certificates** and enter the domain. |
 | Need the full login server trace | `docker compose stop radius`, then `docker run --rm -p 1812:1812/udp -v "$PWD/data:/mnt/local:ro" wifi-radius sh -c "sed 's/freeradius -f/freeradius -X/' /start.sh > /tmp/s && sh /tmp/s"`, try a login, Ctrl+C, `docker compose start radius`. |

@@ -113,10 +113,11 @@ Devices ask once to trust the certificate because it was made here, not bought. 
 **wifi.skillsclinic.local** before tapping Trust. A different name may mean someone is faking the
 network.
 
-Removing the prompt needs a certificate that phones already trust: one from a public authority
-(e.g. Let's Encrypt) for a domain you own, renewed automatically. Android then connects with
-"Use system certificates" and the domain name, without the prompt. iPhones and Macs still ask to
-trust it once, unless they get a configuration profile.
+To remove the prompt on Android, the optional `wifi-certs` container gets a free Let's Encrypt
+certificate for a domain on Cloudflare (e.g. `wifi.riomar.dev`) and renews it automatically.
+Android then connects with "Use system certificates" and the domain name. iPhones, Macs and Windows
+still ask once (and may ask again after a renewal), unless they get a configuration profile.
+Setup: [docs/SETUP.md, step 12](docs/SETUP.md#12-optional-a-publicly-trusted-certificate-lets-encrypt).
 
 ## Files
 
@@ -130,6 +131,9 @@ trust it once, unless they get a configuration profile.
 | `portal/web` | React + TypeScript + Vite, **shadcn/ui** + Tailwind. |
 | `data/clients.conf` | Router secret. Private. |
 | `data/certs/` | Certificate and keys. **Don't delete**, or every device must trust a new one. |
+| `certs/` | Optional Let's Encrypt container (`wifi-certs`). |
+| `letsencrypt/` | Cloudflare token and domain for it. Private; not in Git. |
+| `data/letsencrypt/` | The Let's Encrypt certificate, when there is one. Used instead of `data/certs/server.pem`. |
 | `data/users` | Generated from the portal database. Don't edit by hand. |
 
 Back up the `data` folder and the portal database (portal → Server → Download backup).
