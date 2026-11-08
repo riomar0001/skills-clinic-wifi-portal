@@ -23,6 +23,7 @@ import { formatDateTime } from '@/lib/format'
 import { USERNAME_HINT, USERNAME_PATTERN, generatePassword } from '@/lib/password'
 import { EMAIL_DOMAIN, EMAIL_HINT, EMAIL_PATTERN, ID_LABEL, fullName } from '@/lib/person'
 import { cn } from '@/lib/utils'
+import { AdminAccessCard } from './AdminAccessCard'
 import { useDeleteWifiUser, useSetWifiPassword, useUpdateWifiUser, useWifiUser, useWifiUserConnections } from './api'
 import { CredentialsDialog, type Credentials } from './CredentialsDialog'
 import { DevicesCard } from './DevicesCard'
@@ -288,6 +289,8 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
               </Button>
             </CardFooter>
           </Card>
+
+          <AdminAccessCard user={user} />
 
           <Card className="border-destructive/30">
             <CardHeader>

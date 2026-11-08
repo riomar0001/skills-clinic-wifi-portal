@@ -81,6 +81,20 @@ def test_console_reset_also_sets_wifi_password(admin_client, settings):
     assert nt_hash("Console-Reset-42") in settings.users_file.read_text()
 
 
+def test_promoting_a_wifi_user_keeps_their_wifi_password(admin_client, settings):
+    admin_client.post("/api/wifi-users", json=person("484470", password="Wifi-Pass-11"))
+    wifi_line_before = settings.users_file.read_text()
+
+    r = admin_client.post("/api/admins", json={"username": "484470", "password": "admin-pass-2024"})
+    assert r.status_code == 201, r.text
+    assert admin_client.post("/api/admins", json={"username": "484470", "password": "admin-pass-2024"}).status_code == 409
+
+    assert settings.users_file.read_text() == wifi_line_before  # devices keep working
+    with TestClient(admin_client.app, headers=PORTAL_HEADERS) as c:
+        assert c.post("/api/auth/login", json={"username": "484470", "password": "admin-pass-2024"}).json()["role"] == "admin"
+        assert c.post("/api/auth/login", json={"username": "484470", "password": "Wifi-Pass-11"}).json()["role"] == "wifi"
+
+
 def test_certificate_and_downloads(admin_client):
     info = admin_client.get("/api/certificate").json()
     assert info["name"] == "wifi.test.local"
