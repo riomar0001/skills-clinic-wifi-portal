@@ -33,7 +33,7 @@ export function AppSidebar({ admin }: { admin: string }) {
             <SidebarMenuButton size="lg" asChild>
               <Link to="/" onClick={() => setOpenMobile(false)}>
                 <Logo />
-                <div className="grid flex-1 text-left leading-tight">
+                <div className="grid flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-semibold">CCE Skills Clinic</span>
                   <span className="truncate text-xs text-muted-foreground">Wifi Admin Portal</span>
                 </div>
