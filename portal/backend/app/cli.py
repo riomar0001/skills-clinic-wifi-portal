@@ -57,10 +57,11 @@ def main(argv: list[str] | None = None) -> int:
     settings = load_settings()
     upgrade_to_latest(settings.db_path)
     engine = make_engine(settings.db_path)
+    exporter = RadiusUsersExporter(settings)
     try:
         with make_session_factory(engine)() as db:
             if args.command == "list-admins":
-                for admin in AdminService(db).list():
+                for admin in AdminService(db, exporter).list():
                     print(admin.username)
                 return 0
 
@@ -69,17 +70,18 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
 
             if args.command == "reset-admin":
-                AdminService(db).reset_password(args.username, password)
-                print(f"Password changed for {args.username}. They are signed out everywhere.")
+                AdminService(db, exporter).reset_password(args.username, password)
+                print(f"Password changed for {args.username}, and for their Wi-Fi account with the same name if "
+                      "they have one. They are signed out everywhere.")
                 return 0
 
             if args.command == "add-admin":
-                admin = AdminService(db).create(CONSOLE, args.username.strip(), password)
+                admin = AdminService(db, exporter).create(CONSOLE, args.username.strip(), password)
                 print(f"Added admin {admin.username}.")
                 return 0
 
             # add-wifi-user
-            user = WifiUserService(db, RadiusUsersExporter(settings)).create(
+            user = WifiUserService(db, exporter).create(
                 CONSOLE, args.id, password, first_name=args.first, last_name=args.last,
                 email=args.email, note=args.note)
             print(f"Added Wi-Fi user {user.username} ({user.first_name} {user.last_name}, {user.email}).")

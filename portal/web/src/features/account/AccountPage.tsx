@@ -42,7 +42,11 @@ export function AccountPage() {
         <form onSubmit={submit} className="contents">
           <CardHeader>
             <CardTitle>Change password</CardTitle>
-            <CardDescription>Your other signed-in browsers will be signed out.</CardDescription>
+            <CardDescription>
+              Your other signed-in browsers will be signed out. If you also have a Wi-Fi account named{' '}
+              <span className="font-medium text-foreground">{me}</span>, its Wi-Fi password changes to this one too: your
+              devices will ask for it the next time they join.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5">
             {change.isError && (

@@ -6,7 +6,9 @@ import threading
 from fastapi.testclient import TestClient
 
 from app.core.config import Settings
+from app.core.passwords import nt_hash
 from app.main import create_app
+from app.services.admins import AdminService
 from app.services.radius_health import ACCESS_REJECT, RadiusHealthChecker
 from tests.conftest import PORTAL_HEADERS, SECRET, person
 
@@ -32,6 +34,51 @@ def test_change_password_signs_out_other_browsers(admin_client, settings):
         assert r.status_code == 204
         assert admin_client.get("/api/auth/me").status_code == 200
         assert other.get("/api/auth/me").status_code == 401
+
+
+def test_admin_password_change_also_sets_their_wifi_password(admin_client, settings):
+    admin_client.post("/api/wifi-users", json=person("boss", password="Wifi-Pass-11", email="boss.w@umindanao.edu.ph"))
+    with TestClient(admin_client.app, headers=PORTAL_HEADERS) as my_wifi:
+        assert my_wifi.post("/api/auth/login", json={"username": "boss", "password": "Wifi-Pass-11"}).json()["role"] == "wifi"
+
+        r = admin_client.put("/api/account/password", json={"current_password": "correct-horse-1",
+                                                            "new_password": "Shared-Secret-77"})
+        assert r.status_code == 204, r.text
+
+        users = settings.users_file.read_text()
+        assert nt_hash("Shared-Secret-77") in users and nt_hash("Wifi-Pass-11") not in users
+        assert my_wifi.get("/api/me").status_code == 401  # My Wi-Fi with the old password is signed out
+        actions = [a["action"] for a in admin_client.get("/api/activity").json()[:2]]
+        assert sorted(actions) == ["admin.password", "wifi.password"]
+
+
+def test_admin_password_unusable_for_wifi_changes_nothing(admin_client, settings):
+    admin_client.post("/api/wifi-users", json=person("boss", password="Wifi-Pass-11", email="boss.w@umindanao.edu.ph"))
+    before = settings.users_file.read_text()
+
+    r = admin_client.put("/api/account/password", json={"current_password": "correct-horse-1",
+                                                        "new_password": "Contraseña-segura-1"})  # fine for admin only
+    assert r.status_code == 400 and "Wi-Fi account" in r.json()["detail"]
+
+    assert settings.users_file.read_text() == before
+    with TestClient(admin_client.app, headers=PORTAL_HEADERS) as c:
+        assert c.post("/api/auth/login", json={"username": "boss", "password": "correct-horse-1"}).status_code == 200
+
+
+def test_admin_without_wifi_account_can_use_any_admin_password(admin_client, settings):
+    before = settings.users_file.read_text()
+    r = admin_client.put("/api/account/password", json={"current_password": "correct-horse-1",
+                                                        "new_password": "Contraseña-segura-1"})
+    assert r.status_code == 204, r.text
+    assert settings.users_file.read_text() == before
+
+
+def test_console_reset_also_sets_wifi_password(admin_client, settings):
+    admin_client.post("/api/wifi-users", json=person("boss", password="Wifi-Pass-11", email="boss.w@umindanao.edu.ph"))
+    app = admin_client.app
+    with app.state.session_factory() as db:
+        AdminService(db, app.state.exporter).reset_password("boss", "Console-Reset-42")
+    assert nt_hash("Console-Reset-42") in settings.users_file.read_text()
 
 
 def test_certificate_and_downloads(admin_client):

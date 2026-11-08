@@ -77,8 +77,8 @@ def get_wifi_service(request: Request, db: DbDep) -> WifiUserService:
     return WifiUserService(db, request.app.state.exporter)
 
 
-def get_admin_service(db: DbDep) -> AdminService:
-    return AdminService(db)
+def get_admin_service(request: Request, db: DbDep) -> AdminService:
+    return AdminService(db, request.app.state.exporter)
 
 
 WifiServiceDep = Annotated[WifiUserService, Depends(get_wifi_service)]
