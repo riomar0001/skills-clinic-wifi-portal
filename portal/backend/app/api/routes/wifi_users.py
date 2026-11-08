@@ -41,8 +41,9 @@ def user_connections(username: Username, _: CurrentAdminDep, service: WifiServic
 @router.patch("/{username}", response_model=WifiUserOut)
 def update_user(username: Username, body: WifiUserUpdateIn, current: CurrentAdminDep, service: WifiServiceDep):
     expiry = body.expires_at if "expires_at" in body.model_fields_set else UNSET
-    return service.update(current.admin.username, username, first_name=body.first_name, last_name=body.last_name,
-                          email=body.email, note=body.note, enabled=body.enabled, expires_at=expiry)
+    return service.update(current.admin.username, username, new_username=body.username, first_name=body.first_name,
+                          last_name=body.last_name, email=body.email, note=body.note, enabled=body.enabled,
+                          expires_at=expiry)
 
 
 @router.put("/{username}/password", status_code=204)

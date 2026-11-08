@@ -3,6 +3,7 @@ from __future__ import annotations
 import hmac
 from typing import Protocol
 
+from sqlalchemy import update as sa_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -12,7 +13,7 @@ from app.core.passwords import (NOTE_MAX, check_email, check_name_part, check_us
 
 ID_LABEL = "Student ID / Faculty ID"
 EMAIL_TAKEN = "That UMindanao email already belongs to another Wi-Fi user."
-from app.db.models import WifiUser, now
+from app.db.models import ConnectionEvent, WifiUser, now
 from app.repositories.activity import ActivityRepository
 from app.repositories.admins import WifiSessionRepository
 from app.repositories.wifi_users import StatusFilter, WifiUserRepository
@@ -88,10 +89,21 @@ class WifiUserService:
         self._commit(f"A Wi-Fi user with ID '{username}' or that email already exists.", radius_changed=True)
         return user
 
-    def update(self, actor: str, username: str, *, first_name: str | None = None, last_name: str | None = None,
-               email: str | None = None, note: str | None = None, enabled: bool | None = None,
-               expires_at: int | None | _Unset = UNSET) -> WifiUser:
+    def update(self, actor: str, username: str, *, new_username: str | None = None, first_name: str | None = None,
+               last_name: str | None = None, email: str | None = None, note: str | None = None,
+               enabled: bool | None = None, expires_at: int | None | _Unset = UNSET) -> WifiUser:
         user = self.get(username)
+        renamed = False
+        if new_username is not None:
+            new_username = check_username(new_username.strip().lower(), ID_LABEL)
+            if new_username != user.username:
+                if self.users.get(new_username) is not None:
+                    raise Conflict(f"A Wi-Fi user with ID '{new_username}' already exists.")
+                # Keep their connection history under the new ID (events are stored by username).
+                self.db.execute(sa_update(ConnectionEvent).where(ConnectionEvent.username == user.username)
+                                .values(username=new_username))
+                user.username = new_username
+                renamed = True
         if first_name is not None:
             user.first_name = check_name_part(first_name, "First name")
         if last_name is not None:
@@ -112,14 +124,18 @@ class WifiUserService:
             user.expires_at = check_expiry(expires_at)  # type: ignore[arg-type]
         user.updated_at = now()
 
+        if renamed:
+            self.activity.add(actor, "wifi.rename", f"{username} to {user.username}"[:64])
         if toggled:
             action = "wifi.enable" if enabled else "wifi.disable"
         elif expiry_changed:
             action = "wifi.expiry_clear" if user.expires_at is None else "wifi.expiry"
         else:
             action = "wifi.update"
-        self.activity.add(actor, action, username)
-        self._commit(EMAIL_TAKEN, radius_changed=toggled or expiry_changed)
+        if toggled or expiry_changed or not renamed:
+            self.activity.add(actor, action, user.username)
+        self._commit("A Wi-Fi user with that ID or email already exists.",
+                     radius_changed=toggled or expiry_changed or renamed)
         return user
 
     def set_password(self, actor: str, username: str, password: str) -> None:

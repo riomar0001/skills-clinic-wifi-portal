@@ -68,6 +68,7 @@ class WifiUserCreateIn(_In):
 
 
 class WifiUserUpdateIn(_In):
+    username: str | None = Field(default=None, max_length=64)  # new Student/Faculty ID (admins only)
     first_name: str | None = Field(default=None, max_length=200)
     last_name: str | None = Field(default=None, max_length=200)
     email: str | None = Field(default=None, max_length=300)
