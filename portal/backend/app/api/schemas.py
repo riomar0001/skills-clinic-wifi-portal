@@ -116,6 +116,35 @@ class WifiUserImportOut(BaseModel):
     added: int
 
 
+# ----- access requests -----
+
+class AccessRequestIn(_In):
+    """From the public sign-in page; password is the Wi-Fi password the person wants."""
+    username: str = Field(max_length=64)  # Student ID / Faculty ID
+    password: str = Field(max_length=200)
+    first_name: str = Field(max_length=200)
+    last_name: str = Field(max_length=200)
+    email: str = Field(max_length=300)
+
+
+class AccessRequestSentOut(BaseModel):
+    username: str
+
+
+class AccessRequestOut(_Out):
+    id: int
+    username: str
+    first_name: str
+    last_name: str
+    email: str
+    created_at: int
+
+
+class AccessRequestApproveIn(_In):
+    expires_at: Expiry | None = None  # None = never expires
+    device_limit: DeviceLimit | None = None  # None = no limit
+
+
 # ----- Wi-Fi user's own portal -----
 
 class MeOut(_Out):
@@ -210,6 +239,7 @@ class DashboardOut(BaseModel):
     wifi_active: int
     wifi_disabled: int
     wifi_expired: int
+    access_requests: int  # waiting for an admin
     admins: int
     radius: RadiusStatusOut
     certificate: CertificateOut | None

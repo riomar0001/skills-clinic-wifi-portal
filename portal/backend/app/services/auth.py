@@ -16,6 +16,7 @@ from app.core.files import atomic_write
 from app.core.passwords import (DUMMY_ADMIN_HASH, check_username, hash_admin_password, hash_token, nt_hash,
                                 verify_admin_password)
 from app.db.models import Admin, AdminSession, WifiUser, WifiUserSession, now
+from app.repositories.access_requests import AccessRequestRepository
 from app.repositories.activity import ActivityRepository
 from app.repositories.admins import AdminRepository, SessionRepository, WifiSessionRepository
 from app.repositories.wifi_users import WifiUserRepository
@@ -163,6 +164,10 @@ class AuthService:
         if wifi_ok:
             self.throttle.succeeded(throttle_key)
             return self._start_wifi_session(wifi_user), _wifi_identity(wifi_user)
+        # Only someone who knows the requested password learns that the request is still waiting.
+        pending = AccessRequestRepository(self.db).get_by_username(name.lower()) if given else None
+        if pending is not None and hmac.compare_digest(given, pending.nt_hash):
+            raise Forbidden("Your access request is still waiting for an admin. You can sign in once it's approved.")
         self.throttle.failed(throttle_key)
         raise NotAuthenticated("Wrong ID, username or password.")
 

@@ -13,6 +13,7 @@ from app.api.deps import CurrentAdminDep, DbDep, SettingsDep
 from app.api.schemas import (ActivityOut, CertificateOut, ConfirmPasswordIn, DashboardOut, RadiusStatusOut,
                              RouterSecretOut)
 from app.core.errors import NotFound
+from app.repositories.access_requests import AccessRequestRepository
 from app.repositories.activity import ActivityRepository
 from app.repositories.admins import AdminRepository
 from app.repositories.wifi_users import WifiUserRepository
@@ -33,6 +34,7 @@ def dashboard(request: Request, _: CurrentAdminDep, db: DbDep, settings: Setting
     return DashboardOut(
         wifi_total=counts["total"], wifi_active=counts["active"],
         wifi_disabled=counts["disabled"], wifi_expired=counts["expired"],
+        access_requests=AccessRequestRepository(db).count(),
         admins=AdminRepository(db).count(),
         radius=RadiusStatusOut(ok=health.ok, detail=health.detail),
         certificate=cert,

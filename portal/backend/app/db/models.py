@@ -96,6 +96,21 @@ class WifiUserSession(Base):
     last_seen_at: Mapped[int] = mapped_column(Integer, default=now, index=True)
 
 
+class AccessRequest(Base):
+    """Someone asking for a Wi-Fi account from the sign-in page, waiting for an admin.
+    Only the NT hash of the password they chose is kept (what the login server needs), never the password."""
+
+    __tablename__ = "access_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(32), unique=True)  # Student ID / Faculty ID
+    first_name: Mapped[str] = mapped_column(String(60))
+    last_name: Mapped[str] = mapped_column(String(60))
+    email: Mapped[str] = mapped_column(String(254), unique=True)
+    nt_hash: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[int] = mapped_column(Integer, default=now, index=True)
+
+
 class ConnectionEvent(Base):
     """One Wi-Fi login attempt, imported from FreeRADIUS (wifi-events.conf)."""
 

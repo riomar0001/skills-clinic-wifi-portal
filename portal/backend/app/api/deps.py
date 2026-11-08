@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.core.errors import NotAuthenticated
 from app.db.models import Admin, WifiUser
+from app.services.access_requests import AccessRequestService
 from app.services.admins import AdminService
 from app.services.auth import AuthService
 from app.services.wifi_users import WifiUserService
@@ -81,5 +82,10 @@ def get_admin_service(request: Request, db: DbDep) -> AdminService:
     return AdminService(db, request.app.state.exporter)
 
 
+def get_access_request_service(request: Request, db: DbDep) -> AccessRequestService:
+    return AccessRequestService(db, request.app.state.exporter)
+
+
+AccessRequestServiceDep = Annotated[AccessRequestService, Depends(get_access_request_service)]
 WifiServiceDep = Annotated[WifiUserService, Depends(get_wifi_service)]
 AdminServiceDep = Annotated[AdminService, Depends(get_admin_service)]

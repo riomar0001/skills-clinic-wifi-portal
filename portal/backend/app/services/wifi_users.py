@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import re
 from typing import Protocol
 
 from sqlalchemy import update as sa_update
@@ -12,6 +13,7 @@ from app.core.passwords import (NOTE_MAX, check_email, check_name_part, check_us
                                 clean_text, nt_hash)
 
 ID_LABEL = "Student ID / Faculty ID"
+NT_HASH_RE = re.compile(r"[0-9A-F]{32}")
 EMAIL_TAKEN = "That UMindanao email already belongs to another Wi-Fi user."
 from app.db.models import ConnectionEvent, WifiUser, now
 from app.repositories.activity import ActivityRepository
@@ -79,6 +81,15 @@ class WifiUserService:
     def create(self, actor: str, username: str, password: str, first_name: str, last_name: str, email: str,
                note: str = "", expires_at: int | None = None, device_limit: int | None = None) -> WifiUser:
         """username is the person's Student ID or Faculty ID."""
+        return self.create_with_hash(actor, username, nt_hash(password), first_name, last_name, email,
+                                     note=note, expires_at=expires_at, device_limit=device_limit)
+
+    def create_with_hash(self, actor: str, username: str, password_nt_hash: str, first_name: str, last_name: str,
+                         email: str, note: str = "", expires_at: int | None = None,
+                         device_limit: int | None = None) -> WifiUser:
+        """Like create, from an NT hash computed earlier (an approved access request), so no password is needed."""
+        if not NT_HASH_RE.fullmatch(password_nt_hash or ""):
+            raise InvalidInput("The stored password is unreadable; ask the person to request access again.")
         username = (username or "").strip().lower()
         check_username(username, ID_LABEL)
         user = WifiUser(
@@ -87,7 +98,7 @@ class WifiUserService:
             last_name=check_name_part(last_name, "Last name"),
             email=check_email(email),
             note=clean_text(note, "Note", NOTE_MAX),
-            nt_hash=nt_hash(password),
+            nt_hash=password_nt_hash,
             enabled=True,
             expires_at=check_expiry(expires_at),
             device_limit=check_device_limit(device_limit),
