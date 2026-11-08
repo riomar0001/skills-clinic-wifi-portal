@@ -1,6 +1,7 @@
 """Signing in and out (admins and Wi-Fi users share one page), sessions, first-time setup, throttling."""
 
 import hmac
+import math
 import secrets
 import threading
 import time
@@ -22,9 +23,13 @@ from app.repositories.admins import AdminRepository, SessionRepository, WifiSess
 from app.repositories.wifi_users import WifiUserRepository
 from app.services.admin_password import admin_password_matches
 
-LOGIN_MAX_FAILURES = 5
+LOGIN_MAX_FAILURES = 5          # per name + address
 LOGIN_LOCK_SECONDS = 300
-MAX_TRACKED_NAMES = 1000
+ACCOUNT_MAX_FAILURES = 20       # per name, from any address
+ACCOUNT_LOCK_SECONDS = 900
+LOGIN_WINDOW_SECONDS = 900      # failures older than this are forgotten
+MAX_TRACKED_KEYS = 10_000       # per table; a few MB at most
+SATURATED_WAIT_SECONDS = 60     # when every slot holds an active lock (an attack in progress)
 TOUCH_INTERVAL_SECONDS = 60
 _DUMMY_NT_HASH = "0" * 32
 
@@ -42,37 +47,90 @@ def _wifi_identity(user: WifiUser) -> Identity:
     return Identity("wifi", user.username, f"{user.first_name} {user.last_name}".strip() or user.username)
 
 
+class _FailureTable:
+    """Wrong-password counts per key: `limit` failures within `window` seconds lock the key for `lock` seconds.
+    Bounded, and an active lock is never dropped to make room: when every slot holds one, new keys are
+    refused instead (fail closed), so flooding it with made-up names can't clear a lock."""
+
+    def __init__(self, limit: int, window: float, lock: float, capacity: int):
+        self.limit, self.window, self.lock, self.capacity = limit, window, lock, capacity
+        self._entries: dict[str, list[float]] = {}  # key -> [count, first failure, locked until] (monotonic)
+
+    def seconds_locked(self, key: str, at: float) -> int:
+        entry = self._entries.get(key)
+        if entry is not None:
+            return max(0, math.ceil(entry[2] - at))
+        return SATURATED_WAIT_SECONDS if not self._make_room(at) else 0
+
+    def failed(self, key: str, at: float) -> None:
+        entry = self._entries.get(key)
+        if entry is None:
+            if not self._make_room(at):
+                return  # full of active locks; seconds_locked already refuses new keys
+            entry = self._entries[key] = [0, at, 0.0]
+        elif entry[2] <= at and at - entry[1] >= self.window:
+            entry[:] = [0, at, 0.0]  # old failures, or a lock that has run out: start over
+        entry[0] += 1
+        if entry[0] >= self.limit and entry[2] <= at:
+            entry[2] = at + self.lock
+
+    def clear(self, key: str) -> None:
+        self._entries.pop(key, None)
+
+    def _make_room(self, at: float) -> bool:
+        """True if a new key fits: forgets finished entries first, then the oldest one that isn't locked."""
+        if len(self._entries) < self.capacity:
+            return True
+        for key in [k for k, (_, first, until) in self._entries.items() if until <= at and at - first >= self.window]:
+            del self._entries[key]
+        if len(self._entries) < self.capacity:
+            return True
+        oldest_unlocked = next((k for k, (_, _, until) in self._entries.items() if until <= at), None)
+        if oldest_unlocked is None:
+            return False
+        del self._entries[oldest_unlocked]
+        return True
+
+
 class LoginThrottle:
-    """After 5 wrong passwords for a key (a name, or name|address at sign-in), refuse it for 5 minutes. In memory."""
+    """Wrong-password locks, in memory. Keys are a name, or "name|address" at sign-in.
+
+    - name|address: 5 wrong passwords in 15 minutes lock that pair for 5 minutes, so someone guessing from
+      their own device can't lock the real person out.
+    - name alone, from any address: 20 in 15 minutes lock the account for 15 minutes, so guesses spread over
+      many addresses (easy from the internet) are limited too. The price: such an attack can lock the real
+      person out for a while; restarting the portal clears every lock.
+    """
 
     def __init__(self):
         self._lock = threading.Lock()
-        self._failures: dict[str, list[float]] = {}  # name -> [count, locked_until (monotonic)]
+        self._pairs = _FailureTable(LOGIN_MAX_FAILURES, LOGIN_WINDOW_SECONDS, LOGIN_LOCK_SECONDS, MAX_TRACKED_KEYS)
+        self._accounts = _FailureTable(ACCOUNT_MAX_FAILURES, LOGIN_WINDOW_SECONDS, ACCOUNT_LOCK_SECONDS,
+                                       MAX_TRACKED_KEYS)
 
     @staticmethod
-    def _key(username: str) -> str:
-        return (username or "").strip().lower()[:130]
+    def _keys(key: str) -> tuple[str, str]:
+        key = (key or "").strip().lower()[:130]
+        return key, key.split("|", 1)[0]
 
-    def seconds_locked(self, username: str) -> int:
+    def seconds_locked(self, key: str) -> int:
+        pair, account = self._keys(key)
+        at = time.monotonic()
         with self._lock:
-            entry = self._failures.get(self._key(username))
-            return max(0, int(entry[1] - time.monotonic())) if entry else 0
+            return max(self._pairs.seconds_locked(pair, at), self._accounts.seconds_locked(account, at))
 
-    def failed(self, username: str) -> None:
-        key = self._key(username)
+    def failed(self, key: str) -> None:
+        pair, account = self._keys(key)
+        at = time.monotonic()
         with self._lock:
-            if key not in self._failures and len(self._failures) >= MAX_TRACKED_NAMES:
-                self._failures.pop(next(iter(self._failures)))
-            entry = self._failures.setdefault(key, [0, 0.0])
-            if entry[1] and entry[1] <= time.monotonic():
-                entry[:] = [0, 0.0]
-            entry[0] += 1
-            if entry[0] >= LOGIN_MAX_FAILURES:
-                entry[1] = time.monotonic() + LOGIN_LOCK_SECONDS
+            self._pairs.failed(pair, at)
+            self._accounts.failed(account, at)
 
-    def succeeded(self, username: str) -> None:
+    def succeeded(self, key: str) -> None:
+        pair, account = self._keys(key)
         with self._lock:
-            self._failures.pop(self._key(username), None)
+            self._pairs.clear(pair)
+            self._accounts.clear(account)
 
 
 class SetupCode:
