@@ -12,6 +12,11 @@ certs=$data/certs
 
 docker version --format '{{.Server.Version}}' >/dev/null
 mkdir -p "$certs"
+# Optional publicly trusted certificate (docs/SETUP.md): the certs container waits until
+# letsencrypt/cloudflare.ini and letsencrypt/domain exist, and writes data/letsencrypt.
+# Made here so Docker doesn't create them owned by root; the token folder is private.
+mkdir -p letsencrypt "$data/letsencrypt"
+chmod 700 letsencrypt
 
 # Certificates: phones remember this one, so it is created once and kept (valid 10 years).
 if [ ! -e "$certs/server.pem" ]; then
@@ -63,6 +68,11 @@ echo
 echo 'Running:'
 echo '  Login server   UDP 1812 (for the router)'
 echo '  Portal         http://<this machine>:8080  (one sign-in for admins and Wi-Fi users)'
+if [ -e letsencrypt/cloudflare.ini ]; then
+    echo "  Certificate    Let's Encrypt, renewed automatically (docker logs wifi-certs)"
+else
+    echo '  Certificate    self-made (for a publicly trusted one, see docs/SETUP.md)'
+fi
 
 # The portal writes the first-admin setup code a few seconds after it starts.
 i=0

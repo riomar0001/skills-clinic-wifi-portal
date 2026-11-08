@@ -13,6 +13,10 @@ $usersFile = Join-Path $data 'users'
 
 docker version --format '{{.Server.Version}}' | Out-Null
 New-Item -ItemType Directory -Force -Path $certs | Out-Null
+# Optional publicly trusted certificate (docs/SETUP.md): the certs container waits until
+# letsencrypt\cloudflare.ini and letsencrypt\domain exist, and writes data\letsencrypt.
+$letsencrypt = Join-Path $PSScriptRoot 'letsencrypt'
+New-Item -ItemType Directory -Force -Path $letsencrypt, (Join-Path $data 'letsencrypt') | Out-Null
 
 # Certificates: phones remember this one, so it is created once and kept (valid 10 years).
 if (-not (Test-Path (Join-Path $certs 'server.pem'))) {
@@ -59,6 +63,11 @@ Write-Host ''
 Write-Host 'Running:'
 Write-Host '  Login server      UDP 1812 (for the router)'
 Write-Host '  Portal            http://<this PC>:8080  (one sign-in for admins and Wi-Fi users)'
+if (Test-Path (Join-Path $letsencrypt 'cloudflare.ini')) {
+    Write-Host '  Certificate       Let''s Encrypt, renewed automatically (docker logs wifi-certs)'
+} else {
+    Write-Host '  Certificate       self-made (for a publicly trusted one, see docs/SETUP.md)'
+}
 
 # The portal writes the first-admin setup code a few seconds after it starts.
 $setupCode = Join-Path $data 'setup-code.txt'
