@@ -102,6 +102,10 @@ In `http://192.168.1.1`:
 (MAC `XX-XX-XX-XX-XX-XX`, from `ipconfig /all`) and **192.168.0.83** for the router's WAN side
 (MAC `XX:XX:XX:XX:XX:XX`, on the router's **Status** page).
 
+**Changing the server's address later** is fine: update the router's **RADIUS Server IP** and the
+`wifi` DNS record in Cloudflare (if you use HTTPS). Nothing in the project needs changing. See
+[docs/SETUP.md](docs/SETUP.md#changing-the-servers-address).
+
 ## Joining from a device
 
 - **iPhone / iPad / Mac:** username and password, then tap **Trust**.

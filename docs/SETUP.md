@@ -152,7 +152,7 @@ The router finds the login server by its IP address, so that address must not ch
    **address reservation** for that MAC address.
 
 If the server's address ever changes, Wi-Fi logins stop until you update **RADIUS Server IP** in the
-router (step 8).
+router (step 8). See [Changing the server's address](#changing-the-servers-address) for the full list.
 
 ## 7. Firewall
 
@@ -412,8 +412,28 @@ login server's user list from the restored database when it starts.
    Because `data` came along, the certificate and router secret stay the same, so phones won't see
    a new certificate.
 3. Restore the database backup (above).
-4. Give the new machine a fixed address (step 6) and change **RADIUS Server IP** in the router (step 8).
+4. Give the new machine a fixed address (step 6), then follow
+   [Changing the server's address](#changing-the-servers-address) if it differs from the old one.
 5. Stop the old one: `docker compose down` in its project folder.
+
+## Changing the server's address
+
+The address can change any time (a new network, a new reservation, a move). Nothing in the project
+stores it: the login server accepts the router from any address, and the Let's Encrypt certificate is
+tied to the name (`wifi.riomar.dev`), not the address. Only these places point to the server:
+
+| Where | What to change | Until you do |
+|---|---|---|
+| Modem DHCP (step 6) | Reserve the new address for the server's MAC, or set it on the server itself | The address may change again |
+| Router → **Wireless Security** (step 8) | **RADIUS Server IP** = the new address, then **Save** | Nobody can join the Wi-Fi |
+| Cloudflare → your domain → **DNS → Records** (step 12) | Edit the `wifi` record's **IPv4 address**; keep it **DNS only** | `https://wifi.riomar.dev` doesn't load |
+
+Nothing else changes: no rebuild or setup run, and devices keep their Wi-Fi settings without
+rejoining or trusting anything again. Some devices may keep using the old address for a few minutes
+after the DNS change, until their cached lookup expires.
+
+Check afterwards: the portal's dashboard should say the login server is *Running*, a phone should be
+able to join, and `nslookup wifi.riomar.dev 1.1.1.1` should answer the new address.
 
 ## Security notes
 
