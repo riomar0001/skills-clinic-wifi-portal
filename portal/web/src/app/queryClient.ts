@@ -1,12 +1,12 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 import { ApiError } from '../api/client'
-import type { AuthStatus } from '../api/types'
+import { SIGNED_OUT, type AuthStatus } from '../api/types'
 import { authKeys } from '../features/auth/api'
 
 /** A 401 anywhere means the session ended (expired or signed out elsewhere): show the sign-in page. */
 function onError(err: unknown) {
   if (!(err instanceof ApiError) || err.status !== 401) return
-  queryClient.setQueryData<AuthStatus>(authKeys.status, (s) => (s?.admin ? { ...s, admin: null } : s))
+  queryClient.setQueryData<AuthStatus>(authKeys.status, (s) => (s?.role ? { ...SIGNED_OUT, needs_setup: s.needs_setup } : s))
 }
 
 export const queryClient: QueryClient = new QueryClient({

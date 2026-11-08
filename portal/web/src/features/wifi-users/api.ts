@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
-import type { WifiStatusFilter, WifiUser } from '../../api/types'
+import type { Connection, WifiStatusFilter, WifiUser } from '../../api/types'
 
 export const wifiKeys = {
   all: ['wifi-users'] as const,
@@ -19,6 +19,14 @@ export function useWifiUsers(search: string, status: WifiStatusFilter) {
       return api.get<WifiUser[]>(`/api/wifi-users?${params}`)
     },
     placeholderData: keepPreviousData,
+  })
+}
+
+export function useWifiUserConnections(username: string) {
+  return useQuery({
+    queryKey: [...wifiKeys.detail(username), 'connections'],
+    queryFn: () => api.get<Connection[]>(`${path(username)}/connections?limit=20`),
+    refetchInterval: 30_000,
   })
 }
 

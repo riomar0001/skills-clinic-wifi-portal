@@ -29,7 +29,7 @@ export function AuthLayout({ title, description, product = 'Wifi Admin Portal', 
         <CardContent>{children}</CardContent>
       </Card>
       <div className="max-w-sm text-center text-xs text-muted-foreground">
-        {footer ?? 'Admin access only. Wi-Fi users don’t sign in here.'}
+        {footer}
       </div>
     </main>
   )

@@ -1,8 +1,35 @@
 /** Mirrors app/api/schemas.py in the backend. Times are Unix seconds. */
 
+export type Role = 'admin' | 'wifi'
+
 export interface AuthStatus {
   needs_setup: boolean
-  admin: string | null
+  /** Who is signed in: an admin or a Wi-Fi user; null when nobody is. */
+  role: Role | null
+  username: string | null
+  name: string | null
+}
+
+export const SIGNED_OUT: AuthStatus = { needs_setup: false, role: null, username: null, name: null }
+
+/** A Wi-Fi user's own account, as they see it. */
+export interface Me {
+  username: string
+  first_name: string
+  last_name: string
+  email: string | null
+  enabled: boolean
+  expires_at: number | null
+  expired: boolean
+  created_at: number
+  last_connected_at: number | null
+}
+
+/** One Wi-Fi login attempt recorded by the login server. */
+export interface Connection {
+  at: number
+  accepted: boolean
+  device: string
 }
 
 export interface WifiUser {

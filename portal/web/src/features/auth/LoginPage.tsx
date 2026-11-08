@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAuthStatus, useLogin } from './api'
+import { HOME_FOR, useAuthStatus, useLogin } from './api'
 
 export function LoginPage() {
   const status = useAuthStatus()
@@ -20,17 +20,25 @@ export function LoginPage() {
 
   if (status.isPending) return <AuthLayout title="Sign in"><Skeleton className="h-48" /></AuthLayout>
   if (status.data?.needs_setup) return <Navigate to="/setup" replace />
-  if (status.data?.admin) return <Navigate to="/" replace />
+  if (status.data?.role) return <Navigate to={HOME_FOR[status.data.role]} replace />
 
-  const from = (location.state as { from?: string } | null)?.from ?? '/'
+  const from = (location.state as { from?: string } | null)?.from
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    login.mutate({ username: username.trim(), password }, { onSuccess: () => navigate(from, { replace: true }) })
+    login.mutate({ username: username.trim(), password }, {
+      // Admins go back where they were; Wi-Fi users always land on their own page.
+      onSuccess: (s) => navigate(s.role === 'admin' ? from ?? HOME_FOR.admin : HOME_FOR.wifi, { replace: true }),
+    })
   }
 
   return (
-    <AuthLayout title="Sign in" description="Manage who can use the Wi-Fi.">
+    <AuthLayout
+      title="Sign in"
+      product="Wifi Portal"
+      description="Students and faculty: use your ID and Wi-Fi password. Admins: use your admin account."
+      footer="Your Wi-Fi password is the one you use to join the clinic Wi-Fi."
+    >
       <form className="grid gap-5" onSubmit={submit}>
         {login.isError && (
           <Alert variant="destructive">
@@ -38,7 +46,7 @@ export function LoginPage() {
             <AlertDescription>{errorMessage(login.error)}</AlertDescription>
           </Alert>
         )}
-        <FormField label="Username">
+        <FormField label="Student/Faculty ID or admin username">
           <Input name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required autoFocus
             value={username} onChange={(e) => setUsername(e.target.value)} />
         </FormField>

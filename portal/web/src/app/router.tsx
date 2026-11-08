@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router'
+import { Navigate, createBrowserRouter } from 'react-router'
 import { AppShell } from '@/components/layout/AppShell'
 import { AccountPage } from '@/features/account/AccountPage'
 import { ActivityPage } from '@/features/activity/ActivityPage'
@@ -7,19 +7,26 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RequireAuth } from '@/features/auth/RequireAuth'
 import { SetupPage } from '@/features/auth/SetupPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
-import { ChangeWifiPasswordPage } from '@/features/self-service/ChangeWifiPasswordPage'
+import { MeLayout } from '@/features/me/MeLayout'
+import { MePage } from '@/features/me/MePage'
 import { ServerPage } from '@/features/server/ServerPage'
 import { WifiUserDetailPage } from '@/features/wifi-users/WifiUserDetailPage'
 import { WifiUsersPage } from '@/features/wifi-users/WifiUsersPage'
 import { NotFoundPage } from './NotFoundPage'
 
 export const router = createBrowserRouter([
+  // One sign-in page for admins and Wi-Fi users; it sends each to their own area.
   { path: '/login', element: <LoginPage /> },
   { path: '/setup', element: <SetupPage /> },
-  // For Wi-Fi users; also the only page the network-facing self-service port serves.
-  { path: '/change-password', element: <ChangeWifiPasswordPage /> },
+  // Old address of the Wi-Fi password page; links shared earlier still work.
+  { path: '/change-password', element: <Navigate to="/me" replace /> },
   {
-    element: <RequireAuth />,
+    path: '/me',
+    element: <RequireAuth role="wifi" />,
+    children: [{ element: <MeLayout />, children: [{ index: true, element: <MePage /> }] }],
+  },
+  {
+    element: <RequireAuth role="admin" />,
     children: [
       {
         element: <AppShell />,

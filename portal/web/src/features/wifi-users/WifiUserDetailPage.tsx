@@ -6,7 +6,8 @@ import { ApiError, errorMessage } from '@/api/client'
 import type { WifiUser } from '@/api/types'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { FormField } from '@/components/common/FormField'
-import { EmptyState, ErrorAlert, PageSkeleton } from '@/components/common/states'
+import { ConnectionTable } from '@/components/common/ConnectionTable'
+import { EmptyState, ErrorAlert, ListSkeleton, PageSkeleton } from '@/components/common/states'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -21,7 +22,7 @@ import { formatDateTime } from '@/lib/format'
 import { generatePassword } from '@/lib/password'
 import { EMAIL_DOMAIN, EMAIL_HINT, EMAIL_PATTERN, ID_LABEL, fullName } from '@/lib/person'
 import { cn } from '@/lib/utils'
-import { useDeleteWifiUser, useSetWifiPassword, useUpdateWifiUser, useWifiUser } from './api'
+import { useDeleteWifiUser, useSetWifiPassword, useUpdateWifiUser, useWifiUser, useWifiUserConnections } from './api'
 import { CredentialsDialog, type Credentials } from './CredentialsDialog'
 import { ExpiryPicker } from './ExpiryPicker'
 import { WifiPasswordInput } from './PasswordInput'
@@ -45,6 +46,25 @@ export function WifiUserDetailPage() {
   }
   // Keyed by username so the form starts from the saved values.
   return <WifiUserDetail key={user.data.username} user={user.data} />
+}
+
+function RecentConnections({ username }: { username: string }) {
+  const connections = useWifiUserConnections(username)
+  return (
+    <Card className="gap-0 overflow-hidden py-0">
+      <CardHeader className="border-b py-4">
+        <CardTitle>Recent connections</CardTitle>
+        <CardDescription>The last 20 Wi-Fi login attempts with this ID, from the login server.</CardDescription>
+      </CardHeader>
+      {connections.isPending ? (
+        <ListSkeleton rows={3} />
+      ) : connections.isError ? (
+        <div className="p-4"><ErrorAlert message={errorMessage(connections.error)} onRetry={() => connections.refetch()} /></div>
+      ) : (
+        <ConnectionTable connections={connections.data} />
+      )}
+    </Card>
+  )
 }
 
 function ExpiryEditor({ user }: { user: WifiUser }) {
@@ -258,6 +278,8 @@ function WifiUserDetail({ user }: { user: WifiUser }) {
           </Card>
         </div>
       </div>
+
+      <RecentConnections username={user.username} />
 
       <Dialog open={resetOpen} onOpenChange={(open) => !setPassword.isPending && setResetOpen(open)}>
         <DialogContent className="sm:max-w-md">

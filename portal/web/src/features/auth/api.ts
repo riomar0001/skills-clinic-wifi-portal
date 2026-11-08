@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
-import type { AuthStatus } from '../../api/types'
+import { SIGNED_OUT, type AuthStatus, type Role } from '../../api/types'
+
+/** Where each kind of account lands after signing in. */
+export const HOME_FOR: Record<Role, string> = { admin: '/', wifi: '/me' }
 
 export const authKeys = {
   status: ['auth', 'status'] as const,
@@ -44,6 +47,6 @@ export function useLogout() {
   const startFresh = useStartFresh()
   return useMutation({
     mutationFn: () => api.post<void>('/api/auth/logout'),
-    onSettled: () => startFresh({ needs_setup: false, admin: null }),
+    onSettled: () => startFresh(SIGNED_OUT),
   })
 }

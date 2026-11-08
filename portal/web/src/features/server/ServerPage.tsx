@@ -101,13 +101,14 @@ export function ServerPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Self-service password page</CardTitle>
-            <CardDescription>Wi-Fi users can change their own password, without an admin.</CardDescription>
+            <CardTitle>Portal for Wi-Fi users</CardTitle>
+            <CardDescription>Students and faculty manage their own Wi-Fi account here, without an admin.</CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="divide-y">
-              <Row label="Address"><code className="font-mono">http://&lt;this server&gt;:8081</code></Row>
-              <Row label="Who can open it">Any device on the network. It shows only the change-password form; this admin portal stays on the server.</Row>
+              <Row label="Address"><code className="font-mono">http://&lt;this server&gt;:8080</code></Row>
+              <Row label="Sign in with">Their Student/Faculty ID and Wi-Fi password, on the same page admins use.</Row>
+              <Row label="They can">Update their name and email, see their connection history, and change their password (optional).</Row>
             </dl>
           </CardContent>
         </Card>

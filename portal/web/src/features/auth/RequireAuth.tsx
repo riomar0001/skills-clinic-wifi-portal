@@ -1,11 +1,15 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { errorMessage } from '@/api/client'
+import type { Role } from '@/api/types'
 import { ErrorAlert } from '@/components/common/states'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAuthStatus } from './api'
+import { HOME_FOR, useAuthStatus } from './api'
 
-/** Gate for signed-in pages: sends people to setup or sign-in when needed. */
-export function RequireAuth() {
+/**
+ * Gate for signed-in pages of one kind (admin or Wi-Fi user). Sends people to setup, the shared
+ * sign-in page, or their own area if they are the other kind. The API enforces this too.
+ */
+export function RequireAuth({ role }: { role: Role }) {
   const status = useAuthStatus()
   const location = useLocation()
 
@@ -24,6 +28,7 @@ export function RequireAuth() {
     )
   }
   if (status.data.needs_setup) return <Navigate to="/setup" replace />
-  if (!status.data.admin) return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  return <Outlet context={status.data.admin} />
+  if (!status.data.role) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (status.data.role !== role) return <Navigate to={HOME_FOR[status.data.role]} replace />
+  return <Outlet context={status.data.username} />
 }
