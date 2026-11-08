@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Admin, AdminSession
+from app.db.models import Admin, AdminSession, WifiUserSession
 
 
 class AdminRepository:
@@ -50,3 +50,28 @@ class SessionRepository:
 
     def delete_idle(self, older_than: int) -> None:
         self.db.execute(delete(AdminSession).where(AdminSession.last_seen_at < older_than))
+
+
+class WifiSessionRepository:
+    """Sessions of Wi-Fi users signed in to their own portal."""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get(self, token_hash: str) -> WifiUserSession | None:
+        return self.db.get(WifiUserSession, token_hash)
+
+    def add(self, session: WifiUserSession) -> None:
+        self.db.add(session)
+
+    def delete(self, token_hash: str) -> None:
+        self.db.execute(delete(WifiUserSession).where(WifiUserSession.token_hash == token_hash))
+
+    def delete_for_user(self, wifi_user_id: int, keep_token_hash: str | None = None) -> None:
+        stmt = delete(WifiUserSession).where(WifiUserSession.wifi_user_id == wifi_user_id)
+        if keep_token_hash:
+            stmt = stmt.where(WifiUserSession.token_hash != keep_token_hash)
+        self.db.execute(stmt)
+
+    def delete_idle(self, older_than: int) -> None:
+        self.db.execute(delete(WifiUserSession).where(WifiUserSession.last_seen_at < older_than))

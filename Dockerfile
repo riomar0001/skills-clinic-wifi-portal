@@ -11,6 +11,15 @@ RUN set -eu; \
     grep -q 'filename = /etc/raddb/local/users' /etc/raddb/mods-available/files; \
     grep -q 'default_eap_type = peap' /etc/raddb/mods-available/eap
 
+# Log every Wi-Fi login attempt (accepted or refused) for the portal's connection history.
+COPY wifi-events.conf /etc/raddb/mods-enabled/wifi_events
+RUN set -eu; \
+    sed -i 's/\r$//' /etc/raddb/mods-enabled/wifi_events; \
+    sed -i '/^post-auth {/a\	wifi_event_accept' /etc/raddb/sites-available/inner-tunnel; \
+    sed -i '/^\tPost-Auth-Type REJECT {/a\		wifi_event_reject' /etc/raddb/sites-available/inner-tunnel; \
+    test "$(grep -c 'wifi_event_accept' /etc/raddb/sites-available/inner-tunnel)" = 1; \
+    test "$(grep -c 'wifi_event_reject' /etc/raddb/sites-available/inner-tunnel)" = 1
+
 COPY start.sh /start.sh
 COPY reload-users.sh /reload-users.sh
 RUN sed -i 's/\r$//' /start.sh /reload-users.sh && chmod 755 /start.sh /reload-users.sh

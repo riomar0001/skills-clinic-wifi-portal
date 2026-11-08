@@ -1,25 +1,43 @@
-"""Signing in and out, sessions, first-time setup and sign-in throttling."""
+"""Signing in and out (admins and Wi-Fi users share one page), sessions, first-time setup, throttling."""
 
+import hmac
 import secrets
 import threading
 import time
+from dataclasses import dataclass
+from typing import Literal
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.core.errors import Conflict, Forbidden, NotAuthenticated, TooManyAttempts
+from app.core.errors import Conflict, Forbidden, InvalidInput, NotAuthenticated, TooManyAttempts
 from app.core.files import atomic_write
-from app.core.passwords import (DUMMY_ADMIN_HASH, check_username, hash_admin_password, hash_token,
+from app.core.passwords import (DUMMY_ADMIN_HASH, check_username, hash_admin_password, hash_token, nt_hash,
                                 verify_admin_password)
-from app.db.models import Admin, AdminSession, now
+from app.db.models import Admin, AdminSession, WifiUser, WifiUserSession, now
 from app.repositories.activity import ActivityRepository
-from app.repositories.admins import AdminRepository, SessionRepository
+from app.repositories.admins import AdminRepository, SessionRepository, WifiSessionRepository
+from app.repositories.wifi_users import WifiUserRepository
 
 LOGIN_MAX_FAILURES = 5
 LOGIN_LOCK_SECONDS = 300
 MAX_TRACKED_NAMES = 1000
 TOUCH_INTERVAL_SECONDS = 60
+_DUMMY_NT_HASH = "0" * 32
+
+Role = Literal["admin", "wifi"]
+
+
+@dataclass(frozen=True)
+class Identity:
+    role: Role
+    username: str
+    name: str  # what to greet them with
+
+
+def _wifi_identity(user: WifiUser) -> Identity:
+    return Identity("wifi", user.username, f"{user.first_name} {user.last_name}".strip() or user.username)
 
 
 class LoginThrottle:
@@ -90,6 +108,8 @@ class AuthService:
         self.throttle = throttle
         self.admins = AdminRepository(db)
         self.sessions = SessionRepository(db)
+        self.wifi_users = WifiUserRepository(db)
+        self.wifi_sessions = WifiSessionRepository(db)
         self.activity = ActivityRepository(db)
 
     def needs_setup(self) -> bool:
@@ -114,22 +134,75 @@ class AuthService:
         code.clear()
         return token
 
-    def login(self, username: str, password: str) -> str:
-        if (wait := self.throttle.seconds_locked(username)) > 0:
+    def login(self, username: str, password: str) -> tuple[str, Identity]:
+        """One sign-in page for everyone: admin accounts are checked first, then Wi-Fi users
+        (Student/Faculty ID + Wi-Fi password). Both checks always run, so timing doesn't reveal which exists."""
+        name = (username or "").strip()
+        password = password or ""
+        if (wait := self.throttle.seconds_locked(name)) > 0:
             raise TooManyAttempts(f"Too many wrong passwords. Try again in {wait // 60 + 1} minute(s).")
-        admin = self.admins.get((username or "").strip())
-        ok = verify_admin_password(password or "", admin.password_hash if admin else DUMMY_ADMIN_HASH)
-        if not ok or admin is None:
-            self.throttle.failed(username)
-            raise NotAuthenticated("Wrong username or password.")
-        self.throttle.succeeded(username)
-        self.activity.add(admin.username, "admin.login", admin.username)
-        return self._start_session(admin)
+
+        admin = self.admins.get(name)
+        admin_ok = verify_admin_password(password, admin.password_hash if admin else DUMMY_ADMIN_HASH)
+        wifi_user = self.wifi_users.get(name.lower())
+        try:
+            given = nt_hash(password)
+        except InvalidInput:
+            given = ""  # not a possible Wi-Fi password
+        stored = wifi_user.nt_hash if wifi_user is not None else _DUMMY_NT_HASH
+        # Disabled accounts can't sign in; expired ones can, to see why the Wi-Fi refuses them.
+        wifi_ok = bool(given) and hmac.compare_digest(given, stored) and wifi_user is not None and wifi_user.enabled
+
+        if admin is not None and admin_ok:
+            self.throttle.succeeded(name)
+            self.activity.add(admin.username, "admin.login", admin.username)
+            return self._start_session(admin), Identity("admin", admin.username, admin.username)
+        if wifi_ok:
+            self.throttle.succeeded(name)
+            return self._start_wifi_session(wifi_user), _wifi_identity(wifi_user)
+        self.throttle.failed(name)
+        raise NotAuthenticated("Wrong ID, username or password.")
+
+    def identify(self, token: str | None) -> Identity | None:
+        """Who a session cookie belongs to, admin or Wi-Fi user."""
+        if (admin := self.resolve(token)) is not None:
+            return Identity("admin", admin[0].username, admin[0].username)
+        if (wifi := self.resolve_wifi_user(token)) is not None:
+            return _wifi_identity(wifi[0])
+        return None
 
     def logout(self, token: str | None) -> None:
-        if token:
-            self.sessions.delete(hash_token(token))
+        if token and len(token) <= 200:
+            token_hash = hash_token(token)
+            self.sessions.delete(token_hash)
+            self.wifi_sessions.delete(token_hash)
             self.db.commit()
+
+    def resolve_wifi_user(self, token: str | None) -> tuple[WifiUser, str] | None:
+        """The signed-in Wi-Fi user and session hash, or None. Ends the session if the account was disabled."""
+        if not token or len(token) > 200:
+            return None
+        token_hash = hash_token(token)
+        session = self.wifi_sessions.get(token_hash)
+        if session is None:
+            return None
+        current = now()
+        user = self.db.get(WifiUser, session.wifi_user_id)
+        if user is None or not user.enabled or current - session.last_seen_at > self.settings.session_idle_seconds:
+            self.wifi_sessions.delete(token_hash)
+            self.db.commit()
+            return None
+        if current - session.last_seen_at > TOUCH_INTERVAL_SECONDS:
+            session.last_seen_at = current
+            self.db.commit()
+        return user, token_hash
+
+    def _start_wifi_session(self, user: WifiUser) -> str:
+        token = secrets.token_urlsafe(32)
+        self.wifi_sessions.delete_idle(now() - self.settings.session_idle_seconds)
+        self.wifi_sessions.add(WifiUserSession(token_hash=hash_token(token), wifi_user_id=user.id))
+        self.db.commit()
+        return token
 
     def resolve(self, token: str | None) -> tuple[Admin, str] | None:
         """The signed-in admin and session hash for a cookie token, or None if expired or unknown."""

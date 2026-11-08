@@ -6,7 +6,7 @@ from typing import Protocol
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.errors import Conflict, InvalidInput, NotAuthenticated, NotFound, TooManyAttempts
+from app.core.errors import Conflict, InvalidInput, NotFound, TooManyAttempts
 from app.core.passwords import (NOTE_MAX, check_email, check_name_part, check_username, check_wifi_password,
                                 clean_text, nt_hash)
 
@@ -14,6 +14,7 @@ ID_LABEL = "Student ID / Faculty ID"
 EMAIL_TAKEN = "That UMindanao email already belongs to another Wi-Fi user."
 from app.db.models import WifiUser, now
 from app.repositories.activity import ActivityRepository
+from app.repositories.admins import WifiSessionRepository
 from app.repositories.wifi_users import StatusFilter, WifiUserRepository
 from app.services.radius_export import RadiusUsersExporter
 
@@ -24,8 +25,6 @@ class PasswordGuessThrottle(Protocol):
     def succeeded(self, username: str) -> None: ...
 
 
-# Compared against when the username doesn't exist, so both cases take the same path.
-_DUMMY_NT_HASH = "0" * 32
 MAX_EXPIRY_SECONDS = 10 * 365 * 86400
 
 
@@ -130,31 +129,38 @@ class WifiUserService:
         self.activity.add(actor, "wifi.password", username)
         self._commit("Could not save.", radius_changed=True)
 
-    def change_own_password(self, username: str, current_password: str, new_password: str,
-                            throttle: PasswordGuessThrottle) -> None:
-        """Self-service: a Wi-Fi user proves who they are with their current password."""
-        username = (username or "").strip().lower()
-        if (wait := throttle.seconds_locked(username)) > 0:
+    def change_own_password(self, user: WifiUser, current_password: str, new_password: str,
+                            throttle: PasswordGuessThrottle, keep_token_hash: str) -> None:
+        """A signed-in Wi-Fi user changes their own password. Optional, never forced.
+        The current password is asked again, so a borrowed signed-in browser isn't enough."""
+        if (wait := throttle.seconds_locked(user.username)) > 0:
             raise TooManyAttempts(f"Too many wrong passwords. Try again in {wait // 60 + 1} minute(s).")
-        user = self.users.get(username)
+        if user.is_expired():
+            raise InvalidInput("Your account has expired, so the password can't be changed. Ask an admin.")
         try:
             given = nt_hash(current_password)
         except InvalidInput:
             given = ""  # can't be a valid current password; still counts as a wrong guess
-        usable = user is not None and user.enabled and not user.is_expired()
-        stored = user.nt_hash if usable else _DUMMY_NT_HASH
-        if not given or not hmac.compare_digest(given, stored) or not usable:
-            throttle.failed(username)
-            raise NotAuthenticated("Wrong username or password.")
-        throttle.succeeded(username)
+        if not given or not hmac.compare_digest(given, user.nt_hash):
+            throttle.failed(user.username)
+            # 400, not 401: the session is still valid, only this password is wrong.
+            raise InvalidInput("Your current password is wrong.")
+        throttle.succeeded(user.username)
 
         check_wifi_password(new_password)
         if new_password == current_password:
             raise InvalidInput("The new password must be different from the current one.")
         user.nt_hash = nt_hash(new_password)
         user.updated_at = now()
-        self.activity.add(username, "wifi.self_password", username)
+        # Other browsers signed in with the old password are signed out; this one stays.
+        WifiSessionRepository(self.db).delete_for_user(user.id, keep_token_hash=keep_token_hash)
+        self.activity.add(user.username, "wifi.self_password", user.username)
         self._commit("Could not save.", radius_changed=True)
+
+    def update_own_details(self, user: WifiUser, first_name: str | None, last_name: str | None,
+                           email: str | None) -> WifiUser:
+        """A Wi-Fi user edits their own name and email. Their ID, status and expiry stay admin-only."""
+        return self.update(user.username, user.username, first_name=first_name, last_name=last_name, email=email)
 
     def delete(self, actor: str, username: str) -> None:
         self.users.delete(self.get(username))

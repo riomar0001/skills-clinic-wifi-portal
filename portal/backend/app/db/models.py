@@ -2,7 +2,7 @@
 
 import time
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -53,6 +53,30 @@ class WifiUser(Base):
 
     def is_expired(self, at: int | None = None) -> bool:
         return self.expires_at is not None and self.expires_at <= (now() if at is None else at)
+
+
+class WifiUserSession(Base):
+    """A Wi-Fi user signed in to their own portal (separate from admin sessions)."""
+
+    __tablename__ = "wifi_user_sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    wifi_user_id: Mapped[int] = mapped_column(ForeignKey("wifi_users.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[int] = mapped_column(Integer, default=now)
+    last_seen_at: Mapped[int] = mapped_column(Integer, default=now, index=True)
+
+
+class ConnectionEvent(Base):
+    """One Wi-Fi login attempt, imported from FreeRADIUS (wifi-events.conf)."""
+
+    __tablename__ = "connection_events"
+    __table_args__ = (Index("ix_connection_events_username_at", "username", "at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    at: Mapped[int] = mapped_column(Integer)
+    username: Mapped[str] = mapped_column(String(32))
+    accepted: Mapped[bool] = mapped_column(Boolean)
+    device: Mapped[str] = mapped_column(String(32), default="")  # MAC address the phone or laptop reported
 
 
 class ActivityEntry(Base):
