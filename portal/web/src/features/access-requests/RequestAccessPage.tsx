@@ -89,11 +89,12 @@ export function RequestAccessPage() {
             pattern={EMAIL_PATTERN} placeholder={`name@${EMAIL_DOMAIN}`}
             value={email} onChange={(e) => setEmail(e.target.value)} />
         </FormField>
-        <FormField label="Wi-Fi password" hint="8-64 characters: letters, digits and symbols on a normal keyboard.">
+        <FormField label="Your desired Wi-Fi password"
+          hint="The password you'll use to join the Wi-Fi. 8-64 characters: letters, digits and symbols on a normal keyboard.">
           <Input name="new-password" type="password" autoComplete="new-password" minLength={8} maxLength={64} required
             value={password} onChange={(e) => setPassword(e.target.value)} />
         </FormField>
-        <FormField label="Repeat password">
+        <FormField label="Repeat your desired password">
           <Input name="confirm-password" type="password" autoComplete="new-password" minLength={8} maxLength={64} required
             value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         </FormField>
