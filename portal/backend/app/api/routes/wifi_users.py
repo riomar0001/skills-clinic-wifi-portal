@@ -2,8 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
 
-from app.api.deps import CurrentAdminDep, WifiServiceDep
-from app.api.schemas import PasswordIn, StatusFilter, WifiUserCreateIn, WifiUserOut, WifiUserUpdateIn
+from app.api.deps import CurrentAdminDep, DbDep, SettingsDep, WifiServiceDep
+from app.api.schemas import (ConnectionOut, PasswordIn, StatusFilter, WifiUserCreateIn, WifiUserOut,
+                             WifiUserUpdateIn)
+from app.services.connection_log import ConnectionLogService
 from app.core.passwords import USERNAME_PATTERN
 from app.services.wifi_users import UNSET
 
@@ -27,6 +29,13 @@ def create_user(body: WifiUserCreateIn, current: CurrentAdminDep, service: WifiS
 @router.get("/{username}", response_model=WifiUserOut)
 def get_user(username: Username, _: CurrentAdminDep, service: WifiServiceDep):
     return service.get(username)
+
+
+@router.get("/{username}/connections", response_model=list[ConnectionOut])
+def user_connections(username: Username, _: CurrentAdminDep, service: WifiServiceDep, db: DbDep,
+                     settings: SettingsDep, limit: Annotated[int, Query(ge=1, le=500)] = 50):
+    service.get(username)  # 404 for unknown users
+    return ConnectionLogService(db, settings).for_user(username, limit)
 
 
 @router.patch("/{username}", response_model=WifiUserOut)

@@ -5,7 +5,7 @@ from tests.conftest import PORTAL_HEADERS, setup_admin
 
 
 def test_first_run_needs_setup_code(client, settings):
-    assert client.get("/api/auth/status").json() == {"needs_setup": True, "admin": None}
+    assert client.get("/api/auth/status").json() == {"needs_setup": True, "role": None, "username": None, "name": None}
     assert settings.setup_code_file.exists()
 
     r = client.post("/api/auth/setup", json={"setup_code": "WRONG", "username": "boss",
@@ -13,7 +13,7 @@ def test_first_run_needs_setup_code(client, settings):
     assert r.status_code == 403
 
     setup_admin(client, settings)
-    assert client.get("/api/auth/status").json() == {"needs_setup": False, "admin": "boss"}
+    assert client.get("/api/auth/status").json() == {"needs_setup": False, "role": "admin", "username": "boss", "name": "boss"}
     assert not settings.setup_code_file.exists()
 
     r = client.post("/api/auth/setup", json={"setup_code": "x", "username": "evil", "password": "correct-horse-2"})

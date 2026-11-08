@@ -59,10 +59,6 @@ def test_expired_users_are_listed_counted_and_locked_out(admin_client):
     d = admin_client.get("/api/dashboard").json()
     assert (d["wifi_total"], d["wifi_active"], d["wifi_expired"]) == (2, 1, 1)
 
-    r = admin_client.post("/api/self-service/password",
-                          json={"username": "ben", "current_password": "Sunflower-42", "new_password": "Daisy-Field-7"})
-    assert r.status_code == 401
-
     # Extending the expiry brings them back.
     r = admin_client.patch("/api/wifi-users/ben", json={"expires_at": int(time.time()) + DAY})
     assert r.json()["expired"] is False

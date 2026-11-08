@@ -9,12 +9,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.middleware import GuardMiddleware
-from app.api.routes import admins, auth, self_service, system, wifi_users
+from app.api.routes import admins, auth, me, system, wifi_users
 from app.core.config import Settings, load_settings
 from app.core.errors import DomainError
 from app.db.migrate import upgrade_to_latest
 from app.db.session import make_engine, make_session_factory
 from app.services.auth import AuthService, LoginThrottle, SetupCode
+from app.services.connection_log import ConnectionLogService
 from app.services.legacy_import import import_legacy_users
 from app.services.radius_export import RadiusUsersExporter
 from app.services.radius_health import RadiusHealthChecker
@@ -28,6 +29,7 @@ def _startup(app: FastAPI, settings: Settings) -> None:
         if imported := import_legacy_users(db, settings):
             log.warning("Imported %d Wi-Fi user(s) from the old user list.", imported)
         app.state.exporter.export(db)
+        ConnectionLogService(db, settings).import_new()
         if AuthService(db, settings, app.state.throttle).needs_setup():
             code = SetupCode(settings).ensure()
             log.warning("No admin yet. First-time setup code: %s (also in data/setup-code.txt)", code)
@@ -49,12 +51,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.session_factory = make_session_factory(engine)
     app.state.throttle = LoginThrottle()
-    app.state.self_service_throttle = LoginThrottle()
     app.state.exporter = RadiusUsersExporter(settings)
     app.state.health = RadiusHealthChecker(settings)
 
-    app.add_middleware(GuardMiddleware, max_body_bytes=settings.max_body_bytes,
-                       self_service_port=settings.self_service_port)
+    app.add_middleware(GuardMiddleware, max_body_bytes=settings.max_body_bytes)
 
     @app.exception_handler(DomainError)
     async def _domain_error(_: Request, exc: DomainError):
@@ -66,7 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         message = f"Please check: {', '.join(fields)}." if fields else "Some fields are invalid."
         return JSONResponse({"detail": message}, status_code=422)
 
-    for module in (auth, wifi_users, admins, system, self_service):
+    for module in (auth, wifi_users, admins, system, me):
         app.include_router(module.router)
 
     _mount_frontend(app, settings)

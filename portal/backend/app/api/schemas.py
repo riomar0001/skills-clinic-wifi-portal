@@ -18,7 +18,9 @@ class _Out(BaseModel):
 
 class AuthStatus(BaseModel):
     needs_setup: bool
-    admin: str | None
+    role: Literal["admin", "wifi"] | None  # who is signed in: an admin or a Wi-Fi user
+    username: str | None
+    name: str | None
 
 
 class LoginIn(_In):
@@ -78,10 +80,39 @@ class PasswordIn(_In):
     password: str = Field(max_length=200)
 
 
-class SelfServicePasswordIn(_In):
-    username: str = Field(max_length=64)
+# ----- Wi-Fi user's own portal -----
+
+class MeOut(_Out):
+    username: str
+    first_name: str
+    last_name: str
+    email: str | None
+    enabled: bool
+    expires_at: int | None
+    created_at: int
+    last_connected_at: int | None = None
+
+    @computed_field
+    @property
+    def expired(self) -> bool:
+        return self.expires_at is not None and self.expires_at <= int(time.time())
+
+
+class MeUpdateIn(_In):
+    first_name: str | None = Field(default=None, max_length=200)
+    last_name: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, max_length=300)
+
+
+class MePasswordIn(_In):
     current_password: str = Field(max_length=200)
     new_password: str = Field(max_length=200)
+
+
+class ConnectionOut(_Out):
+    at: int
+    accepted: bool
+    device: str
 
 
 StatusFilter = Literal["all", "active", "disabled", "expired"]
