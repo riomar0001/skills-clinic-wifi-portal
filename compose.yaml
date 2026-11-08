@@ -31,6 +31,19 @@ services:
       # SQLite lives in a Docker volume: file locking on Windows folder mounts isn't reliable.
       - portal-db:/var/lib/portal
 
+  # Optional publicly trusted certificate (Let's Encrypt via Cloudflare DNS). Waits, doing nothing,
+  # until letsencrypt/cloudflare.ini and letsencrypt/domain exist. See docs/SETUP.md.
+  certs:
+    build: ./certs
+    image: wifi-certs
+    container_name: wifi-certs
+    restart: unless-stopped
+    volumes:
+      - ./letsencrypt:/etc/wifi-certs:ro  # API token: only this container sees it
+      - ./data/letsencrypt:/out
+      - letsencrypt-state:/etc/letsencrypt
+
 volumes:
   portal-db:
   radius-events:
+  letsencrypt-state:
